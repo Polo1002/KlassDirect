@@ -41,11 +41,22 @@ async function autoLog(page, message) {
     try {
         // --- CONNEXION ---
         await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
+        
+        // On attend explicitement que les champs soient là
+        await page.waitForSelector('input[placeholder="Identifiant"]', { visible: true });
+        
         await page.type('input[placeholder="Identifiant"]', IDENTIFIANT);
         await page.type('input[placeholder="Mot de passe"]', MOT_DE_PASSE);
-        await page.click('button.btn-login');
+        
+        // On attend que le bouton de connexion soit cliquable
+        const loginBtn = 'button.btn-login';
+        await page.waitForSelector(loginBtn, { visible: true });
+        await page.click(loginBtn);
+        
         await pause(3000);
         await autoLog(page, "Saisie_Identifiants");
+
+        // ... reste du code (Double Authentification, etc.)
 
         // --- DOUBLE AUTHENTIFICATION ---
         const isSecurityPage = await page.evaluate(() => {
