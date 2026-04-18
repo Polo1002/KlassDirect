@@ -568,7 +568,7 @@
     async function loadData() {
         try {
             // Le "./" est crucial pour GitHub Pages
-            const response = await fetch('./data_edt.json');
+            const response = await fetch('data_edt.json');
             if (!response.ok) throw new Error("Fichier JSON introuvable");
             
             data = await response.json();
