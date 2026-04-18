@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="fr" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KlassDirect - Emploi du temps</title>
+    
+    <!-- Polices Google -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Icônes Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* --- VARIABLES & THÈMES --- */
+        :root {
+            /* Light Theme */
+            --bg-gradient-1: #e0c3fc;
+            --bg-gradient-2: #8ec5fc;
+            --surface: rgba(255, 255, 255, 0.75);
+            --surface-hover: rgba(255, 255, 255, 0.9);
+            --surface-card: rgba(255, 255, 255, 0.95);
+            --border: rgba(255, 255, 255, 0.5);
+            --border-grid: rgba(0, 0, 0, 0.06);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --primary: #4f46e5;
+            --danger: #ef4444;
+            --shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+        }
+
+        html.dark {
+            /* Dark Theme */
+            --bg-gradient-1: #0f172a;
+            --bg-gradient-2: #1e1b4b;
+            --surface: rgba(30, 41, 59, 0.75);
+            --surface-hover: rgba(30, 41, 59, 0.95);
+            --surface-card: rgba(15, 23, 42, 0.95);
+            --border: rgba(255, 255, 255, 0.1);
+            --border-grid: rgba(255, 255, 255, 0.06);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #818cf8;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        /* --- RESET & BASE --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2));
+            background-attachment: fixed;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* --- HEADER & NAVIGATION --- */
+        header {
+            max-width: 1400px;
+            margin: 0 auto 30px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 15px 25px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--primary), #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .view-tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 4px;
+            border-radius: 12px;
+        }
+        html.dark .view-tabs { background: rgba(255, 255, 255, 0.05); }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn.active {
+            background: var(--surface-card);
+            color: var(--text-main);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .theme-toggle {
+            background: var(--surface-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* --- MAIN CONTAINER --- */
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            min-height: 70vh;
+            overflow-x: auto;
+        }
+
+        /* --- GRID VIEW (Semaine & Aujourd'hui) --- */
+        .grid-layout {
+            display: flex;
+            position: relative;
+            min-width: 800px; /* Force scroll on small screens */
+        }
+
+        /* Jours */
+        .days-wrapper {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+
+        .day-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            border-right: 1px solid var(--border-grid);
+        }
+        .day-column:last-child { border-right: none; }
+
+        .day-header {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-align: center;
+            padding: 15px 0;
+            border-bottom: 2px solid var(--border-grid);
+            color: var(--text-main);
+            position: sticky;
+            top: 0;
+            background: var(--surface);
+            z-index: 20;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Quadrillage & Axe du temps (À DROITE) */
+        .time-axis {
+            width: 60px;
+            flex-shrink: 0;
+            position: relative;
+            border-left: 2px solid var(--border-grid);
+            background: var(--surface);
+            z-index: 10;
+        }
+
+        .time-slot-label {
+            position: absolute;
+            right: 15px;
+            transform: translateY(-50%);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .grid-lines-container {
+            position: absolute;
+            top: 55px; /* Hauteur du header */
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .grid-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            border-top: 1px dashed var(--border-grid);
+        }
+
+        /* --- CARTES DE COURS --- */
+        .courses-container {
+            position: relative;
+            /* La hauteur sera calculée dynamiquement en JS pour éviter l'espace vide */
+            margin-top: 10px;
+            flex-shrink: 0;
+        }
+
+        .course-card {
+            position: absolute;
+            left: 4px;
+            right: 4px;
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: var(--surface-card);
+            border: 1px solid var(--border);
+            border-left-width: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 5;
+            transition: transform 0.2s, box-shadow 0.2s, z-index 0s;
+            cursor: pointer;
+        }
+
+        .course-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        /* Contenu de la carte */
+        .c-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
+        .c-time {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-main);
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .c-subject {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 6px;
+            color: var(--text-main);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .c-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: auto;
+        }
+
+        .c-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .c-detail-item svg {
+            width: 14px;
+            height: 14px;
+            opacity: 0.7;
+        }
+
+        /* Cours courts (<= 55 min) */
+        .course-card.is-short {
+            padding: 6px 10px;
+        }
+        .course-card.is-short .c-header {
+            margin-bottom: 2px;
+        }
+        .course-card.is-short .c-subject {
+            font-size: 0.8rem;
+            margin-bottom: 2px;
+            line-height: 1.1;
+        }
+        .course-card.is-short .c-time {
+            font-size: 0.7rem;
+        }
+        .course-card.is-short .c-details {
+            gap: 2px;
+        }
+        .course-card.is-short .c-detail-item {
+            font-size: 0.7rem;
+            gap: 4px;
+        }
+        .course-card.is-short .c-detail-item svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        /* État Annulé */
+        .course-card.is-cancelled {
+            background: repeating-linear-gradient(
+                45deg,
+                var(--surface-card),
+                var(--surface-card) 10px,
+                rgba(0,0,0,0.03) 10px,
+                rgba(0,0,0,0.03) 20px
+            );
+            border-left-color: var(--text-muted) !important;
+            opacity: 0.8;
+        }
+        html.dark .course-card.is-cancelled {
+            background: repeating-linear-gradient(45deg, var(--surface-card), var(--surface-card) 10px, rgba(255,255,255,0.03) 10px, rgba(255,255,255,0.03) 20px);
+        }
+
+        .course-card.is-cancelled .c-subject {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .badge-cancelled {
+            background: var(--danger);
+            color: white;
+            font-size: 0.6rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* --- MODAL --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px; right: 15px;
+            background: none; border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 5px;
+        }
+        .modal-close:hover { color: var(--text-main); }
+        .modal-header {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-grid);
+        }
+        .modal-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 5px;
+            padding-right: 20px;
+        }
+        .modal-time {
+            color: var(--primary);
+            font-weight: 600;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .modal-detail {
+            display: flex; align-items: center; gap: 10px;
+            color: var(--text-main);
+            font-size: 1.05rem;
+        }
+        .modal-detail svg { color: var(--text-muted); }
+
+        /* Cours sans heure (relatif, affichés en bas) */
+        .timeless-courses {
+            padding: 15px 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-top: 2px dashed var(--border-grid);
+            background: rgba(0, 0, 0, 0.02);
+            flex-grow: 1;
+        }
+        html.dark .timeless-courses {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .timeless-courses .course-card {
+            position: relative;
+            left: 0; right: 0;
+        }
+
+        /* --- LIST VIEW (Mobile) --- */
+        .list-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .list-day-group {
+            background: var(--surface-card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+        .list-day-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--primary);
+            border-bottom: 2px solid var(--border-grid);
+            padding-bottom: 10px;
+        }
+        .list-courses {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .list-courses .course-card {
+            position: relative;
+            left: 0; right: 0;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 900px) {
+            .controls { width: 100%; justify-content: space-between; }
+            .view-tabs { flex: 1; justify-content: space-between; }
+            .tab-btn { flex: 1; justify-content: center; font-size: 0.9rem; padding: 8px 4px; }
+            .tab-btn span { display: none; } /* Cache le texte, garde l'icône sur mobile */
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <i data-lucide="graduation-cap" style="width: 32px; height: 32px; color: var(--primary);"></i>
+            KlassDirect
+        </div>
+        <div class="controls">
+            <div class="view-tabs">
+                <button class="tab-btn" data-view="today" onclick="switchView('today')">
+                    <i data-lucide="calendar-1"></i> <span>Aujourd'hui</span>
+                </button>
+                <button class="tab-btn active" data-view="week" onclick="switchView('week')">
+                    <i data-lucide="calendar-days"></i> <span>Semaine</span>
+                </button>
+                <button class="tab-btn" data-view="list" onclick="switchView('list')">
+                    <i data-lucide="list"></i> <span>Liste</span>
+                </button>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Changer le thème">
+                <i data-lucide="moon" id="theme-icon"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="app-container" id="app-content">
+        <!-- Le contenu sera injecté ici par JS -->
+    </main>
+
+    <!-- Modale pour les détails du cours -->
+    <div class="modal-overlay" id="course-modal" onclick="closeCourseModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeCourseModal()"><i data-lucide="x"></i></button>
+            <div class="modal-header">
+                <div class="modal-title" id="modal-subject"></div>
+                <div class="modal-time" id="modal-time"></div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-detail" id="modal-prof-container">
+                    <i data-lucide="user"></i> <span id="modal-prof"></span>
+                </div>
+                <div class="modal-detail" id="modal-room-container">
+                    <i data-lucide="map-pin"></i> <span id="modal-room"></span>
+                </div>
+                <div class="modal-detail" id="modal-status-container" style="display:none; color: var(--danger); font-weight: bold;">
+                    <i data-lucide="alert-circle"></i> <span>Cours annulé</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. DONNÉES ---
+        let data = [];
+        let MOCK_TODAY = '';
+        let START_HOUR = 8;
+        let END_HOUR = 18;
+        const HOUR_HEIGHT = 120; // Hauteur d'une heure en pixels
+        let lastDataString = '';
+
+        // Fonction pour charger les données JSON
+        async function loadData(isPolling = false) {
+            try {
+                const response = await fetch('./data_edt.json', { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const text = await response.text();
+                
+                // Actualiser uniquement si les données ont changé
+                if (text !== lastDataString) {
+                    lastDataString = text;
+                    data = JSON.parse(text);
+                    
+                    if (data.length > 0) {
+                        // On définit "Aujourd'hui" comme le premier jour disponible
+                        MOCK_TODAY = data[0].jour;
+                        
+                        // Calcul dynamique des heures
+                        const startHours = data.filter(c => c.debut).map(c => parseInt(c.debut.split(':')[0], 10));
+                        const endHours = data.filter(c => c.fin).map(c => {
+                            const parts = c.fin.split(':');
+                            return parseInt(parts[0], 10) + (parseInt(parts[1], 10) > 0 ? 1 : 0);
+                        });
+                        
+                        if (startHours.length > 0) {
+                            START_HOUR = Math.floor(Math.min(...startHours));
+                        }
+                        if (endHours.length > 0) {
+                            END_HOUR = Math.ceil(Math.max(...endHours));
+                        }
+                    } else if (!isPolling) {
+                        console.warn("Le fichier data_edt.json est vide.");
+                    }
+                    
+                    // Rendu initial ou mise à jour
+                    render();
+                }
+            } catch (error) {
+                if (!isPolling) {
+                    console.error("Erreur lors du chargement du fichier data_edt.json:", error);
+                    document.getElementById('app-content').innerHTML = `
+                        <div style="padding: 20px; color: var(--text-muted); text-align: center;">
+                            <p>Impossible de charger l'emploi du temps.</p>
+                            <p style="font-size: 0.9em; margin-top: 10px;">Assurez-vous que le fichier <code>data_edt.json</code> est bien présent dans le même dossier que <code>index.html</code>.</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        let currentView = window.innerWidth < 900 ? 'list' : 'week';
+
+        // --- 3. UTILITAIRES ---
+        function hexToRgba(hex, alpha) {
+            let c;
+            if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+                c = hex.substring(1).split('');
+                if(c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+                c = '0x' + c.join('');
+                return `rgba(${(c>>16)&255}, ${(c>>8)&255}, ${c&255}, ${alpha})`;
+            }
+            return `rgba(128,128,128,${alpha})`;
+        }
+
+        function timeToMinutes(timeStr) {
+            if (!timeStr) return 0;
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function cleanRoomName(room) {
+            return room ? room.replace(/^En\s+/i, "") : "";
+        }
+
+        function formatDay(jourStr) {
+            if (!jourStr || jourStr.includes('--')) return jourStr;
+            const parts = jourStr.split(' ');
+            if (parts.length >= 2) {
+                const dayMap = { 'Lun': 'Lundi', 'Mar': 'Mardi', 'Mer': 'Mercredi', 'Jeu': 'Jeudi', 'Ven': 'Vendredi', 'Sam': 'Samedi', 'Dim': 'Dimanche' };
+                const fullDay = dayMap[parts[0]] || parts[0];
+                return `${fullDay} ${parts[1]}`;
+            }
+            return jourStr;
+        }
+
+        function calculateLayout(courses) {
+            if (!courses || courses.length === 0) return courses;
+            
+            // Trier par heure de début
+            const sorted = [...courses].sort((a, b) => timeToMinutes(a.debut) - timeToMinutes(b.debut));
+            
+            let groups = [];
+            let currentGroup = [];
+            let groupEnd = 0;
+
+            sorted.forEach(course => {
+                const start = timeToMinutes(course.debut);
+                const end = timeToMinutes(course.fin);
+                if (start >= groupEnd) {
+                    if (currentGroup.length > 0) groups.push(currentGroup);
+                    currentGroup = [course];
+                    groupEnd = end;
+                } else {
+                    currentGroup.push(course);
+                    groupEnd = Math.max(groupEnd, end);
+                }
+            });
+            if (currentGroup.length > 0) groups.push(currentGroup);
+
+            groups.forEach(group => {
+                const cols = [];
+                group.forEach(course => {
+                    let placed = false;
+                    for (let i = 0; i < cols.length; i++) {
+                        if (timeToMinutes(cols[i][cols[i].length - 1].fin) <= timeToMinutes(course.debut)) {
+                            cols[i].push(course);
+                            course.colIndex = i;
+                            placed = true;
+                            break;
+                        }
+                    }
+                    if (!placed) {
+                        cols.push([course]);
+                        course.colIndex = cols.length - 1;
+                    }
+                });
+                const numCols = cols.length;
+                group.forEach(course => {
+                    course.numCols = numCols;
+                });
+            });
+            
+            return sorted;
+        }
+
+        // --- 4. GÉNÉRATION DES CARTES ---
+        function createCourseCardHTML(course, isAbsolute = false) {
+            const isCancelled = course.annule;
+            // Opacité augmentée de 0.15 à 0.35 pour des couleurs plus vives (moins transparentes)
+            const bgColor = isCancelled ? '' : `background-color: ${hexToRgba(course.couleur, 0.35)};`;
+            const borderColor = `border-left-color: ${course.couleur};`;
+            const roomDisplay = cleanRoomName(course.salle);
+            
+            let style = `${borderColor} ${bgColor}`;
+            let isShort = false;
+            
+            if (course.debut && course.fin) {
+                const startMins = timeToMinutes(course.debut);
+                const endMins = timeToMinutes(course.fin);
+                const duration = endMins - startMins;
+                
+                if (duration <= 55) {
+                    isShort = true;
+                }
+                
+                if (isAbsolute) {
+                    const top = ((startMins - (START_HOUR * 60)) / 60) * HOUR_HEIGHT;
+                    // On retire 6px à la hauteur pour créer un espace visuel entre les cours qui s'enchaînent
+                    const height = (duration / 60) * HOUR_HEIGHT - 6;
+                    
+                    // Gestion des colonnes (chevauchement)
+                    const colIndex = course.colIndex || 0;
+                    const numCols = course.numCols || 1;
+                    const widthPercent = 100 / numCols;
+                    const leftPercent = colIndex * widthPercent;
+                    
+                    style += ` top: ${top}px; height: ${height}px; left: calc(${leftPercent}% + 4px); width: calc(${widthPercent}% - 8px); right: auto;`;
+                }
+            }
+
+            const courseJson = encodeURIComponent(JSON.stringify(course));
+
+            return `
+                <div class="course-card ${isCancelled ? 'is-cancelled' : ''} ${isShort ? 'is-short' : ''}" style="${style}" onclick="openCourseModal('${courseJson}')">
+                    <div class="c-header">
+                        ${course.debut ? `
+                        <div class="c-time">
+                            <i data-lucide="clock" style="width:12px; height:12px;"></i>
+                            ${course.debut} - ${course.fin}
+                        </div>
+                        ` : '<div></div>'}
+                        ${isCancelled ? '<div class="badge-cancelled">Annulé</div>' : ''}
+                    </div>
+                    <div class="c-subject">${course.matiere}</div>
+                    <div class="c-details">
+                        ${roomDisplay ? `
+                            <div class="c-detail-item">
+                                <i data-lucide="map-pin"></i> ${roomDisplay}
+                            </div>
+                        ` : ''}
+                        <div class="c-detail-item">
+                            <i data-lucide="user"></i> ${course.prof}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- 5. MOTEUR DE RENDU ---
+        function render() {
+            const container = document.getElementById('app-content');
+            
+            // Mise à jour des boutons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === currentView);
+            });
+
+            // Filtrage des données
+            let dataToRender = data;
+            if (currentView === 'today') {
+                dataToRender = data.filter(c => c.jour === MOCK_TODAY);
+            }
+
+            // Grouper par jour
+            const daysOrder = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
+            const groupedData = {};
+            
+            if (currentView === 'today') {
+                if (MOCK_TODAY) groupedData[MOCK_TODAY] = dataToRender;
+            } else {
+                // Initialiser les jours de la semaine
+                daysOrder.forEach(d => {
+                    const fullDay = data.find(c => c.jour.startsWith(d))?.jour || `${d} --`;
+                    groupedData[fullDay] = [];
+                });
+                dataToRender.forEach(course => {
+                    if(groupedData[course.jour]) groupedData[course.jour].push(course);
+                    else groupedData[course.jour] = [course];
+                });
+            }
+
+            if (currentView === 'list') {
+                // --- VUE LISTE ---
+                let html = '<div class="list-layout">';
+                for (const [day, courses] of Object.entries(groupedData)) {
+                    if (courses.length === 0) continue;
+                    html += `
+                        <div class="list-day-group">
+                            <div class="list-day-title">${formatDay(day)}</div>
+                            <div class="list-courses">
+                                ${courses.map(c => createCourseCardHTML(c, false)).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                html += '</div>';
+                container.innerHTML = html;
+
+            } else {
+                // --- VUE GRILLE (Semaine & Aujourd'hui) ---
+                let html = '<div class="grid-layout">';
+                
+                // Conteneur des jours
+                html += '<div class="days-wrapper">';
+                
+                // Lignes de quadrillage (fond)
+                html += '<div class="grid-lines-container">';
+                for (let h = START_HOUR; h <= END_HOUR; h++) {
+                    const top = (h - START_HOUR) * HOUR_HEIGHT;
+                    html += `<div class="grid-line" style="top: ${top}px;"></div>`;
+                }
+                html += '</div>';
+
+                // Colonnes des jours
+                for (const [day, courses] of Object.entries(groupedData)) {
+                    const timelessCourses = courses.filter(c => !c.debut);
+                    let timedCourses = courses.filter(c => c.debut);
+                    
+                    // Calcul des chevauchements pour la vue grille
+                    timedCourses = calculateLayout(timedCourses);
+
+                    html += `
+                        <div class="day-column">
+                            <div class="day-header">${formatDay(day)}</div>
+                            <div class="courses-container" style="height: ${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px;">
+                                ${timedCourses.map(c => createCourseCardHTML(c, true)).join('')}
+                            </div>
+                            ${timelessCourses.length > 0 ? `
+                            <div class="timeless-courses">
+                                ${timelessCourses.map(c => createCourseCardHTML(c, false)).join('')}
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+                html += '</div>'; // Fin days-wrapper
+
+                // Axe du temps (À DROITE)
+                html += '<div class="time-axis">';
+                html += `<div class="day-header" style="color:transparent; border-bottom:none;">-</div>`; // Espace pour aligner avec le header
+                html += '<div style="position:relative; margin-top:10px;">';
+                for (let h = START_HOUR; h <= END_HOUR; h++) {
+                    const top = (h - START_HOUR) * HOUR_HEIGHT;
+                    html += `<div class="time-slot-label" style="top: ${top}px;">${h}h</div>`;
+                }
+                html += '</div></div>'; // Fin time-axis
+
+                html += '</div>'; // Fin grid-layout
+                container.innerHTML = html;
+            }
+
+            // Ré-initialiser les icônes Lucide après injection HTML
+            lucide.createIcons();
+        }
+
+        // --- 6. GESTION DES VUES & THÈMES ---
+        function switchView(view) {
+            currentView = view;
+            render();
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.classList.contains('dark');
+            if (isDark) {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.remove('light');
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const iconEl = document.getElementById('theme-icon');
+            if (iconEl) {
+                // Remplacer l'icône
+                const newIcon = document.createElement('i');
+                newIcon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+                newIcon.id = 'theme-icon';
+                iconEl.parentNode.replaceChild(newIcon, iconEl);
+                lucide.createIcons();
+            }
+        }
+
+        function openCourseModal(courseJson) {
+            const course = JSON.parse(decodeURIComponent(courseJson));
+            document.getElementById('modal-subject').textContent = course.matiere;
+            
+            const timeStr = course.debut ? `${formatDay(course.jour)} • ${course.debut} - ${course.fin}` : formatDay(course.jour);
+            document.getElementById('modal-time').innerHTML = `<i data-lucide="clock" style="width:16px; height:16px;"></i> ${timeStr}`;
+            
+            document.getElementById('modal-prof').textContent = course.prof || 'Non spécifié';
+            
+            const room = cleanRoomName(course.salle);
+            if (room) {
+                document.getElementById('modal-room-container').style.display = 'flex';
+                document.getElementById('modal-room').textContent = room;
+            } else {
+                document.getElementById('modal-room-container').style.display = 'none';
+            }
+            
+            document.getElementById('modal-status-container').style.display = course.annule ? 'flex' : 'none';
+            
+            document.getElementById('course-modal').classList.add('active');
+            lucide.createIcons();
+        }
+        
+        function closeCourseModal(event) {
+            if (event && event.target !== document.getElementById('course-modal')) return;
+            document.getElementById('course-modal').classList.remove('active');
+        }
+
+        // Initialisation du thème
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+        }
+
+        // --- 7. DÉMARRAGE ---
+        lucide.createIcons();
+        updateThemeIcon();
+        loadData();
+        
+        // Actualisation automatique en arrière-plan toutes les 5 secondes
+        setInterval(() => loadData(true), 5000);
+
+    </script>
+</body>
+</html>
