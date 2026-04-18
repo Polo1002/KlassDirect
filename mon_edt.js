@@ -25,19 +25,24 @@ if (fs.existsSync('./config.js')) {
   await page.setExtraHTTPHeaders({ 'Accept-Language': 'fr-FR,fr;q=0.9' });
 
   try {
-    console.log("🌐 Direction : Page de Login...");
-    await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
+    console.log("💉 Injection des identifiants...");
+    await page.waitForSelector('input[name="username"]');
+    
+    // On injecte les valeurs directement dans les éléments HTML
+    await page.evaluate((id, pwd) => {
+        const userField = document.querySelector('input[name="username"]');
+        const passField = document.querySelector('input[name="password"]');
+        userField.value = id;
+        passField.value = pwd;
+        
+        // On déclenche manuellement les événements pour que le site croie qu'on a tapé
+        userField.dispatchEvent(new Event('input', { bubbles: true }));
+        passField.dispatchEvent(new Event('input', { bubbles: true }));
+        userField.dispatchEvent(new Event('change', { bubbles: true }));
+        passField.dispatchEvent(new Event('change', { bubbles: true }));
+    }, IDENTIFIANT, MOT_DE_PASSE);
 
-    // --- SAISIE "HUMAINE" ---
-    console.log("⌨️ Saisie de l'identifiant...");
-    await page.waitForSelector('input[name="username"]', { timeout: 10000 });
-    await page.click('input[name="username"]'); // On clique d'abord
-    await page.type('input[name="username"]', IDENTIFIANT, { delay: 100 }); // On tape lentement
-
-    console.log("⌨️ Saisie du mot de passe...");
-    await page.click('input[name="password"]');
-    await page.type('input[name="password"]', MOT_DE_PASSE, { delay: 100 });
-
+    await new Promise(r => setTimeout(r, 1000));
     console.log("🖱️ Clic sur Connexion...");
     await page.click('button[type="submit"]');
 
