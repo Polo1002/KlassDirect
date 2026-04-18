@@ -31,6 +31,10 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data_edt.json
+          
+          # On ajoute le fichier en précisant le chemin complet
+          git add KlassDirect/Site/data_edt.json
+          
+          # Le commit ne se fera que s'il y a une modification réelle
           git commit -m "🚀 Mise à jour auto de l'emploi du temps" || exit 0
           git push
