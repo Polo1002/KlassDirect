@@ -29,10 +29,8 @@ jobs:
         run: node mon_edt.js
 
       - name: Save data (Success or Failure)
-        if: always() 
-        run: |
-          git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github.com'
-          git add Site/erreur_capture.png Site/erreur_log.txt Site/data_edt.json || true
-          git commit -m "Capture du bug" || exit 0
-          git push
+      if: always() # IMPORTANT : s'exécute même si le script node a crashé
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-screenshots
+        path: Site/
