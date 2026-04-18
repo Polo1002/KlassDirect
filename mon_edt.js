@@ -14,6 +14,12 @@ if (fs.existsSync('./config.js')) {
     RÉPONSES_SÉCURITÉ = process.env.ED_REPONSES ? process.env.ED_REPONSES.split(',') : [];
 }
 
+async function takeScreenshot(page, name) {
+    if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site', { recursive: true }); }
+    await page.screenshot({ path: `./Site/${name}.png`, fullPage: true });
+    console.log(`📸 Capture d'écran sauvegardée : ${name}.png`);
+}
+
 (async () => {
   const browser = await puppeteer.launch({ 
     headless: "new", 
@@ -27,7 +33,7 @@ if (fs.existsSync('./config.js')) {
     console.log("🌐 Connexion à EcoleDirecte...");
     await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
 
-    await page.waitForSelector('#username');
+    await page.waitForSelector('#username', { timeout: 15000 });
     await page.evaluate((id, pwd) => {
         const u = document.getElementById('username');
         const p = document.getElementById('password');
@@ -38,9 +44,9 @@ if (fs.existsSync('./config.js')) {
     }, IDENTIFIANT, MOT_DE_PASSE);
 
     await page.click('#connexion');
-    await new Promise(r => setTimeout(r, 4000));
+    await new Promise(r => setTimeout(r, 5000));
 
-    // Vérification sécurité
+    // Sécurité / Questions
     const needsSecurity = await page.$('.modal-content');
     if (needsSecurity) {
         console.log("🛡️ Sécurité détectée...");
@@ -52,29 +58,32 @@ if (fs.existsSync('./config.js')) {
             }
         }, RÉPONSES_SÉCURITÉ);
         await page.click('button.btn-primary');
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise(r => setTimeout(r, 5000));
     }
 
-    console.log("🚀 Navigation directe vers l'EDT...");
-    // On utilise l'ID 10042 que tu as confirmé
+    console.log("🚀 Accès à l'emploi du temps...");
+    // Utilisation de l'ID 10042
     await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { 
-        waitUntil: 'networkidle0', // On attend que tout soit chargé (images, scripts, etc.)
+        waitUntil: 'networkidle0',
         timeout: 60000 
     });
     
-    console.log("⏳ Extraction des données...");
-    // On attend un peu plus pour être sûr que les blocs de cours apparaissent
-    await new Promise(r => setTimeout(r, 5000));
+    console.log("⏳ Attente de l'apparition des cours...");
+    // On attend que l'un des blocs de cours soit réellement présent dans le DOM
+    try {
+        await page.waitForSelector('.dhx_cal_event', { timeout: 15000, visible: true });
+    } catch (e) {
+        console.log("⚠️ Sélecteur standard non trouvé, tentative de secours...");
+        await new Promise(r => setTimeout(r, 5000)); // Dernier délai de grâce
+    }
 
     const resultats = await page.evaluate(() => {
-        // Extraction des colonnes de jours
         const joursElements = Array.from(document.querySelectorAll('.dhx_scale_bar'));
         const colonnes = joursElements.map(el => {
             const rect = el.getBoundingClientRect();
             return { nom: el.innerText.trim(), left: rect.left, right: rect.right };
         });
         
-        // Extraction des cours
         const events = Array.from(document.querySelectorAll('.dhx_cal_event'));
         return events.map(event => {
             const rect = event.getBoundingClientRect();
@@ -102,17 +111,16 @@ if (fs.existsSync('./config.js')) {
     });
 
     if (resultats.length === 0) {
-        throw new Error("Aucun cours trouvé dans la page.");
+        throw new Error("Extraction vide : Aucun cours n'a pu être lu.");
     }
 
     if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site'); }
     fs.writeFileSync('./Site/data_edt.json', JSON.stringify(resultats, null, 2));
-    console.log(`✅ SUCCÈS : ${resultats.length} cours enregistrés dans data_edt.json !`);
+    console.log(`✅ SUCCÈS : ${resultats.length} cours récupérés !`);
 
   } catch (err) {
     console.error("💥 ERREUR :", err.message);
-    if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site', {recursive: true}); }
-    await page.screenshot({ path: './Site/erreur_capture.png' });
+    await takeScreenshot(page, 'erreur_capture');
     process.exit(1);
   } finally {
     await browser.close();
