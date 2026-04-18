@@ -58,3 +58,11 @@ jobs:
         with:
           name: screenshots-debug
           path: Site/*.png
+      - name: Upload Debug Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+        # On ajoute l'ID du run pour que le nom soit unique
+          name: debug-screenshots-${{ github.run_id }}
+          path: Site/
+          retention-days: 1
