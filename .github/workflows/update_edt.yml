@@ -38,3 +38,10 @@ jobs:
           # Le commit ne se fera que s'il y a une modification réelle
           git commit -m "🚀 Mise à jour auto de l'emploi du temps" || exit 0
           git push
+      - name: Commit et Push des données
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add data_edt.json
+          git commit -m "Mise à jour automatique de l'EDT" || exit 0
+          git push
