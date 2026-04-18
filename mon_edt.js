@@ -1,11 +1,23 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
-// On importe tes identifiants depuis config.js proprement
-const config = require('./config.js'); 
 
-// Ensuite, dans ton code, remplace IDENTIFIANT par config.IDENTIFIANT, etc.
-// OU utilise cette ligne pour ne pas avoir à tout renommer :
-const { IDENTIFIANT, MOT_DE_PASSE, RÉPONSES_SÉCURITÉ } = config;
+// --- GESTION DES IDENTIFIANTS HYBRIDE ---
+let IDENTIFIANT, MOT_DE_PASSE, RÉPONSES_SÉCURITÉ;
+
+if (fs.existsSync('./config.js')) {
+    // MODE LOCAL : Le fichier existe, on l'utilise
+    const config = require('./config.js');
+    IDENTIFIANT = config.IDENTIFIANT;
+    MOT_DE_PASSE = config.MOT_DE_PASSE;
+    RÉPONSES_SÉCURITÉ = config.RÉPONSES_SÉCURITÉ;
+    console.log("🏠 Mode Local : Utilisation de config.js");
+} else {
+    // MODE CLOUD : Le fichier n'existe pas, on prend les Secrets GitHub
+    IDENTIFIANT = process.env.ED_IDENTIFIANT;
+    MOT_DE_PASSE = process.env.ED_MOTDEPASSE;
+    RÉPONSES_SÉCURITÉ = process.env.ED_REPONSES ? process.env.ED_REPONSES.split(',') : [];
+    console.log("☁️ Mode Cloud : Utilisation des Secrets GitHub");
+}
 
 (async () => {
   const browser = await puppeteer.launch({ 
