@@ -118,7 +118,7 @@ async function autoLog(page, message) {
 
     if (cours.length > 0) {
         console.log(`✅ SUCCÈS : ${cours.length} cours récupérés.`);
-        // Remplace la ligne fs.writeFileSync par celle-ci :
+        // Par celle-ci :
         fs.writeFileSync('./Site/data_edt.json', JSON.stringify(donneesFinales, null, 2));
     } else {
         console.log("❌ ÉCHEC : Aucun cours. Vérifiez la capture 02.");
