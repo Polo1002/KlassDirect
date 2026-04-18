@@ -24,21 +24,13 @@ async function logPageStatus(page, note) {
     const info = await page.evaluate(() => {
         return {
             url: window.location.href,
-            text: document.body.innerText.substring(0, 500).replace(/\n/g, ' | ')
+            text: document.body.innerText.substring(0, 400).replace(/\n/g, ' | ')
         };
     });
     console.log(`\n--- [${step}] STATUT : ${note} ---`);
     console.log(`🔗 URL : ${info.url}`);
-    console.log(`📖 TXT : ${info.text.substring(0, 200)}...`);
+    console.log(`📖 TXT : ${info.text}...`);
     console.log(`-------------------------------------------\n`);
-}
-
-async function autoLog(page, message) {
-    const fileName = `${step.toString().padStart(2, '0')}_${message.replace(/\s+/g, '_').toLowerCase()}.png`;
-    try {
-        await page.screenshot({ path: `${DIR}/${fileName}`, fullPage: true });
-    } catch (e) {}
-    step++;
 }
 
 (async () => {
@@ -51,7 +43,7 @@ async function autoLog(page, message) {
   await page.setViewport({ width: 1600, height: 900 });
 
   try {
-    console.log("🌐 Connexion initiale...");
+    console.log("🌐 Étape 1 : Connexion...");
     await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
     
     await page.evaluate((id, mdp) => {
@@ -59,7 +51,7 @@ async function autoLog(page, message) {
         const p = document.querySelector('#password');
         u.value = id; p.value = mdp;
         u.dispatchEvent(new Event('input', { bubbles: true }));
-        p.dispatchEvent(new Event('input', { bubbles: true }));
+        p.dispatchEvent(new Event('change', { bubbles: true }));
     }, IDENTIFIANT, MOT_DE_PASSE);
     
     await page.click('#connexion');
@@ -68,76 +60,75 @@ async function autoLog(page, message) {
     const securityCheck = await page.$('ed-questions2-fa-auth, .modal-content'); 
 
     if (securityCheck) {
-        console.log("🛡️ Sécurité détectée. Tentative de bypass...");
-        await logPageStatus(page, "Avant sélection");
-
-        const resultatSelection = await page.evaluate((reps) => {
+        console.log("🛡️ Étape 2 : Bypass Sécurité...");
+        
+        const feedback = await page.evaluate((reps) => {
             const labels = Array.from(document.querySelectorAll('label'));
-            let matched = false;
-            
+            let found = false;
+            let matchedText = "";
+
             for (let r of reps) {
                 const target = labels.find(el => el.innerText.trim().toLowerCase() === r.toLowerCase());
                 if (target) {
+                    matchedText = target.innerText;
+                    // On simule un vrai clic utilisateur
                     target.click();
                     const input = document.getElementById(target.getAttribute('for'));
                     if (input) {
                         input.checked = true;
                         input.dispatchEvent(new Event('change', { bubbles: true }));
+                        input.dispatchEvent(new Event('click', { bubbles: true }));
                     }
-                    matched = true;
+                    found = true;
                     break;
                 }
             }
 
-            if (matched) {
-                // FORCE 1 : Activer le bouton
+            if (found) {
                 const btn = document.querySelector('button[type="submit"]');
                 if (btn) {
                     btn.removeAttribute('disabled');
                     btn.disabled = false;
-                    // FORCE 2 : Soumission du formulaire par le code plutôt que par le clic
-                    const form = document.querySelector('form[name="formQuestions2FA"]');
-                    if (form) {
-                        // On utilise requestSubmit pour simuler un vrai clic sur le bouton submit
-                        form.requestSubmit ? form.requestSubmit() : form.submit();
-                        return "FORM_SUBMITTED";
-                    }
+                    btn.click(); // On clique sur le bouton lui-même
                 }
             }
-            return matched ? "MATCH_BUT_NO_FORM" : "NO_MATCH";
+            return { found, matchedText };
         }, RÉPONSES_SÉCURITÉ);
 
-        console.log(`📡 Résultat injection : ${resultatSelection}`);
-        await autoLog(page, "Apres_Tentative_Bypass");
+        console.log(feedback.found ? `✅ Matché : ${feedback.matchedText}` : "⚠️ Aucun match !");
         
-        // On attend plus longtemps car la redirection 2FA est très lente
-        console.log("⏳ Attente de redirection (15s)...");
-        await new Promise(r => setTimeout(r, 15000));
-        await logPageStatus(page, "Après attente redirection");
+        // ATTENTE CRUCIALE
+        console.log("⏳ Validation en cours...");
+        await new Promise(r => setTimeout(r, 12000));
+        await logPageStatus(page, "Après validation");
     }
 
-    console.log("🚀 Direction Emploi du Temps...");
+    console.log("🚀 Étape 3 : Emploi du Temps...");
+    // On n'utilise pas goto directement car le site perd parfois le token. 
+    // On clique sur le menu si possible, sinon on force la navigation.
     await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { 
         waitUntil: 'networkidle0',
         timeout: 60000 
     });
     
-    await new Promise(r => setTimeout(r, 5000));
-    await logPageStatus(page, "Page finale");
-    await autoLog(page, "EDT_Final");
+    await new Promise(r => setTimeout(r, 6000));
+    await logPageStatus(page, "Résultat final");
 
     const cours = await page.evaluate(() => {
         return Array.from(document.querySelectorAll('.dhx_cal_event')).map(e => ({
-            matiere: e.querySelector('.edt-cours-text')?.innerText.trim()
+            m: e.querySelector('.edt-cours-text')?.innerText.trim()
         }));
     });
 
-    console.log(`✅ TERMINÉ : ${cours.length} cours trouvés.`);
-    if (cours.length > 0) fs.writeFileSync(`${DIR}/data_edt.json`, JSON.stringify(cours, null, 2));
+    if (cours.length > 0) {
+        fs.writeFileSync(`${DIR}/data_edt.json`, JSON.stringify(cours, null, 2));
+        console.log(`✅ SUCCÈS : ${cours.length} cours récupérés !`);
+    } else {
+        console.log("❌ ÉCHEC : Aucun cours trouvé (session probablement expirée).");
+    }
 
   } catch (err) {
     console.error(`💥 ERREUR : ${err.message}`);
-    await logPageStatus(page, "Crash");
     process.exit(1);
   } finally {
     await browser.close();
