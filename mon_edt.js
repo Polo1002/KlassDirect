@@ -10,20 +10,15 @@ if (fs.existsSync('./config.js')) {
     RÉPONSES_SÉCURITÉ = config.RÉPONSES_SÉCURITÉ;
 } else {
     IDENTIFIANT = process.env.ED_IDENTIFIANT;
-    // Utilisation du nom exact de ton secret GitHub
     MOT_DE_PASSE = process.env.MOT_DE_PASSE; 
     RÉPONSES_SÉCURITÉ = process.env.ED_REPONSES ? process.env.ED_REPONSES.split(',') : [];
 }
 
-// Configuration du dossier de sortie
 const DIR = './Site';
 if (!fs.existsSync(DIR)) { fs.mkdirSync(DIR, { recursive: true }); }
 
 let step = 1;
 
-/**
- * Prend une capture d'écran numérotée et log l'action
- */
 async function autoLog(page, message) {
     const fileName = `${step.toString().padStart(2, '0')}_${message.replace(/\s+/g, '_').toLowerCase()}.png`;
     await page.screenshot({ path: `${DIR}/${fileName}`, fullPage: true });
@@ -31,12 +26,9 @@ async function autoLog(page, message) {
     step++;
 }
 
-// ... (haut du code inchangé)
-
 (async () => {
-  // Sécurité : on vérifie que les secrets sont bien chargés
   if (!IDENTIFIANT || !MOT_DE_PASSE) {
-      console.error("❌ Erreur : IDENTIFIANT ou MOT_DE_PASSE est vide dans les secrets.");
+      console.error("❌ Erreur : IDENTIFIANT ou MOT_DE_PASSE est vide.");
       process.exit(1);
   }
 
@@ -55,28 +47,24 @@ async function autoLog(page, message) {
 
     await page.waitForSelector('#username', { timeout: 10000 });
     
-    console.log("⌨️ Saisie des identifiants...");
-    // On clique pour être sûr que le curseur est au bon endroit
-    await page.click('#username');
-    await page.type('#username', IDENTIFIANT, { delay: 100 });
-    
-    await page.click('#password');
-    await page.type('#password', MOT_DE_PASSE, { delay: 100 });
+    console.log("⌨️ Saisie des identifiants (Injection)...");
+    // Injection directe pour éviter que le champ reste vide
+    await page.evaluate((id, mdp) => {
+        const u = document.querySelector('#username');
+        const p = document.querySelector('#password');
+        u.value = id;
+        p.value = mdp;
+        u.dispatchEvent(new Event('input', { bubbles: true }));
+        p.dispatchEvent(new Event('input', { bubbles: true }));
+    }, IDENTIFIANT, MOT_DE_PASSE);
     
     await autoLog(page, "Identifiants saisis");
 
     console.log("🖱️ Clic sur Connexion...");
-    // On utilise une promesse pour attendre soit la navigation, soit l'apparition d'une erreur
-    await Promise.all([
-        page.click('#connexion'),
-        new Promise(r => setTimeout(r, 6000))
-    ]);
-    
+    await page.click('#connexion');
+    await new Promise(r => setTimeout(r, 8000));
     await autoLog(page, "Apres clic connexion");
 
-    // Suite du code (Double Auth / EDT) ...
-
-    // Vérification de la situation
     const securityCheck = await page.$('.modal-content, input[type="radio"]'); 
     const isStillOnLogin = await page.$('#username');
     const isLoggedIn = await page.$('.menu-principal, #menu-top');
@@ -88,9 +76,9 @@ async function autoLog(page, message) {
         await autoLog(page, "Fenetre securite apparue");
 
         const selectionReussie = await page.evaluate((reps) => {
-            const labels = Array.from(document.querySelectorAll('label, .radio label, span'));
+            const elements = Array.from(document.querySelectorAll('label, .radio label, span'));
             for (let r of reps) {
-                const target = labels.find(el => 
+                const target = elements.find(el => 
                     el.innerText.trim().toLowerCase() === r.trim().toLowerCase()
                 );
                 if (target) {
@@ -101,13 +89,10 @@ async function autoLog(page, message) {
             return false;
         }, RÉPONSES_SÉCURITÉ);
 
-        if (!selectionReussie) {
-            console.log("⚠️ Aucune réponse n'a pu être sélectionnée automatiquement.");
-        }
+        if (!selectionReussie) console.log("⚠️ Aucune réponse n'a matché.");
 
         await autoLog(page, "Apres tentative selection");
 
-        // Validation de la réponse
         const btnSelector = 'button.btn-primary, .modal-footer button, button[type="submit"]';
         await page.waitForSelector(btnSelector, { visible: true, timeout: 5000 });
         await page.click(btnSelector);
@@ -144,8 +129,6 @@ async function autoLog(page, message) {
             const jourMatch = colonnes.find(col => centreX >= col.left && centreX <= col.right);
             const header = event.querySelector('.edt-cours-header')?.innerText || "";
             const matiere = event.querySelector('.edt-cours-text')?.innerText.trim() || "Inconnu";
-            const prof = Array.from(event.querySelectorAll('.edt-prof')).map(p => p.innerText.trim()).join(', ');
-            const salle = event.querySelector('.float-end')?.innerText.trim() || "";
             const matchHeure = header.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
             
             return {
@@ -153,10 +136,7 @@ async function autoLog(page, message) {
                 debut: matchHeure ? matchHeure[1] : "",
                 fin: matchHeure ? matchHeure[2] : "",
                 matiere: matiere,
-                prof: prof,
-                salle: salle.replace(/^En\s+/i, ""),
-                annule: header.includes("ANNULÉ") || event.innerText.includes("ANNULÉ"),
-                couleur: event.style.getPropertyValue('--dhx-scheduler-event-background').trim()
+                annule: header.includes("ANNULÉ") || event.innerText.includes("ANNULÉ")
             };
         });
     });
@@ -169,11 +149,7 @@ async function autoLog(page, message) {
 
   } catch (err) {
     console.error("💥 ERREUR FATALE :", err.message);
-    fs.writeFileSync(`${DIR}/debug_log.txt`, `Erreur: ${err.message}\nDate: ${new Date().toISOString()}`);
-    
-    if (page) {
-        await autoLog(page, "Erreur fatale");
-    }
+    if (page) await autoLog(page, "Erreur fatale");
     process.exit(1);
   } finally {
     await browser.close();
