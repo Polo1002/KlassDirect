@@ -130,3 +130,20 @@ async function autoLog(page, message) {
     await browser.close();
   }
 })();
+// Le code marche mais il met "Run node mon_edt.js
+
+//🌐 DÉMARRAGE...
+
+//[ÉTAPE 1] 📸 SAISIE_IDENTIFIANTS
+
+//🛡️ Sécurité détectée (Niveau 2)...
+
+//📤 Validation envoyée.
+
+//🚀 Navigation vers l'EDT...
+
+//[ÉTAPE 2] 📸 PAGE_EDT_FINALE
+
+//✅ SUCCÈS : 29 cours récupérés.
+
+//💥 ERREUR : donneesFinales is not defined". Aussi, je veux qu'il enregistre à la racine du projet. Dis-moi donc les changements à faire dans ce code.
