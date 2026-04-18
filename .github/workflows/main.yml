@@ -24,7 +24,7 @@ jobs:
       - name: Run Robot
         env:
           ED_IDENTIFIANT: ${{ secrets.ED_IDENTIFIANT }}
-          ED_MOTDEPASSE: ${{ secrets.ED_MOTDEPASSE }}
+          MOT_DE_PASSE: ${{ secrets.MOT_DE_PASSE }}
           ED_REPONSES: ${{ secrets.ED_REPONSES }}
         run: node mon_edt.js
 
