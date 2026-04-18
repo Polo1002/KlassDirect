@@ -5,40 +5,42 @@ const fs = require('fs');
 let IDENTIFIANT, MOT_DE_PASSE, RÉPONSES_SÉCURITÉ;
 
 if (fs.existsSync('./config.js')) {
-    // MODE LOCAL : Le fichier existe, on l'utilise
     const config = require('./config.js');
     IDENTIFIANT = config.IDENTIFIANT;
     MOT_DE_PASSE = config.MOT_DE_PASSE;
     RÉPONSES_SÉCURITÉ = config.RÉPONSES_SÉCURITÉ;
     console.log("🏠 Mode Local : Utilisation de config.js");
 } else {
-    // MODE CLOUD : Le fichier n'existe pas, on prend les Secrets GitHub
     IDENTIFIANT = process.env.ED_IDENTIFIANT;
     MOT_DE_PASSE = process.env.ED_MOTDEPASSE;
     RÉPONSES_SÉCURITÉ = process.env.ED_REPONSES ? process.env.ED_REPONSES.split(',') : [];
     console.log("☁️ Mode Cloud : Utilisation des Secrets GitHub");
 }
 
+// Debug discret pour vérifier que GitHub voit bien tes accès
+console.log(`🔍 Vérification Identifiants : ID=${IDENTIFIANT ? 'OK' : 'VIDE'} | PWD=${MOT_DE_PASSE ? 'OK' : 'VIDE'}`);
+
 (async () => {
-  // CONFIGURATION POUR GITHUB ACTIONS
   const browser = await puppeteer.launch({ 
     headless: "new", 
     args: [
       '--no-sandbox', 
       '--disable-setuid-sandbox', 
-      '--disable-dev-shm-usage',
-      '--window-size=1280,800'
+      '--disable-dev-shm-usage', 
+      '--window-size=1280,800',
+      '--lang=fr-FR'
     ] 
   }); 
 
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
+  await page.setExtraHTTPHeaders({ 'Accept-Language': 'fr-FR,fr;q=0.9' });
 
   try {
     console.log("🌐 Connexion à Ecole Directe...");
     await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
 
-    await page.waitForSelector('input[name="username"]');
+    await page.waitForSelector('input[name="username"]', { timeout: 10000 });
     await page.type('input[name="username"]', IDENTIFIANT);
     await page.type('input[name="password"]', MOT_DE_PASSE);
     await page.click('button[type="submit"]');
@@ -67,19 +69,13 @@ if (fs.existsSync('./config.js')) {
         }
     }
 
-    // --- BLOC AVEC TEMPS D'ATTENTE AUGMENTÉ ---
-    console.log("⏳ Attente du chargement du tableau de bord (30s max)...");
-    await new Promise(r => setTimeout(r, 5000)); // Petite pause de confort
-
-    const selectorEDT = 'a[aria-label="Emploi du temps"]';
-    
-    // On attend 30000ms (30 secondes) que le bouton apparaisse
-    await page.waitForSelector(selectorEDT, { timeout: 30000, visible: true });
-    await page.click(selectorEDT);
-    // ------------------------------------------
+    // --- NAVIGATION DIRECTE ---
+    console.log("🚀 Saut vers l'emploi du temps...");
+    await page.goto('https://www.ecoledirecte.com/Eleve/EmploiDuTemps', { waitUntil: 'networkidle2' });
 
     console.log("🔍 Extraction des cours pour KlassDirect...");
-    await page.waitForSelector('.dhx_cal_event', { timeout: 20000 });
+    // Attente généreuse pour GitHub
+    await page.waitForSelector('.dhx_cal_event', { timeout: 30000 });
 
     const resultats = await page.evaluate(() => {
         const joursElements = Array.from(document.querySelectorAll('.dhx_scale_bar'));
@@ -123,17 +119,20 @@ if (fs.existsSync('./config.js')) {
         return jourA - jourB || a.debut.localeCompare(b.debut);
     });
 
-    // Vérification du dossier Site
     if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site'); }
-
     fs.writeFileSync('./Site/data_edt.json', JSON.stringify(resultats, null, 2));
-    console.log("\n🚀 SUCCÈS : Site/data_edt.json mis à jour.");
+    console.log("\n✅ SUCCÈS : Données complètes récupérées.");
 
   } catch (err) {
     console.error("💥 Erreur :", err.message);
+    // On tente une capture d'écran pour comprendre pourquoi ça bloque
+    try {
+        if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site'); }
+        await page.screenshot({ path: './Site/erreur_debug.png' });
+        console.log("📸 Photo du bug prise (erreur_debug.png)");
+    } catch (e) {}
     process.exit(1); 
   } finally {
     await browser.close();
-    console.log("🤖 Navigateur fermé.");
   }
 })();
