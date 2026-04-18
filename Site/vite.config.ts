@@ -6,31 +6,25 @@ import { defineConfig, loadEnv } from 'vite';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    // 1. On définit la base pour GitHub Pages
     base: '/KlassDirect/',
-    
-    // 2. On précise que l'index.html est à la racine
-    root: '.',
-    
     plugins: [
       react(),
       tailwindcss(),
     ],
-    
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(__dirname, './src'),
       },
     },
-    
+    build: {
+      rollupOptions: {
+        // On force Vite à chercher l'index à la racine du projet
+        input: path.resolve(__dirname, 'index.html'),
+      },
+      outDir: 'dist',
+    },
     server: {
-      // HMR configuration
       hmr: process.env.DISABLE_HMR !== 'true',
     },
-    
-    build: {
-      // S'assure que le build finit bien dans le dossier 'dist'
-      outDir: 'dist',
-    }
   };
 });
