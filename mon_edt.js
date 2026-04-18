@@ -64,15 +64,42 @@ async function autoLog(page, message) {
     if (isLoggedIn) {
         console.log("✅ Connecté avec succès !");
     } else if (securityCheck) {
+// ... (début du code)
+
+    } else if (securityCheck) {
         console.log("🛡️ Double authentification détectée...");
-        await page.evaluate((reps) => {
-            const labels = Array.from(document.querySelectorAll('label'));
+        await autoLog(page, "Fenetre securite apparue");
+
+        const selection Reussie = await page.evaluate((reps) => {
+            const labels = Array.from(document.querySelectorAll('label, .radio label, span'));
+            // On cherche une correspondance pour chaque réponse fournie
             for (let r of reps) {
-                const c = labels.find(el => el.innerText.trim().toLowerCase() === r.toLowerCase());
-                if (c) { c.click(); return; }
+                const target = labels.find(el => 
+                    el.innerText.trim().toLowerCase() === r.trim().toLowerCase()
+                );
+                if (target) {
+                    target.click();
+                    return true;
+                }
             }
+            return false;
         }, RÉPONSES_SÉCURITÉ);
-        await autoLog(page, "Reponse securite selectionnee");
+
+        if (!selectionReussie) {
+            console.log("⚠️ Aucune réponse n'a pu être sélectionnée automatiquement.");
+        }
+
+        await autoLog(page, "Apres tentative selection");
+
+        // On clique sur le bouton "Envoyer ma réponse"
+        const submitBtn = await page.$('button.btn-primary, .modal-footer button, button[type="submit"]');
+        if (submitBtn) {
+            await submitBtn.click();
+            console.log("📤 Réponse envoyée...");
+        }
+
+        await new Promise(r => setTimeout(r, 8000)); 
+    }
         
         // --- CORRECTION ICI ---
         const btnSelector = 'button.btn-primary, .modal-footer button, button[type="submit"]';
