@@ -1,0 +1,292 @@
+[
+  {
+    "jour": "Lun 13 Avr",
+    "debut": "",
+    "fin": "",
+    "matiere": "EPS OPTION",
+    "salle": "",
+    "prof": "MORI J.",
+    "couleur": "#f3f3f3",
+    "annule": true
+  },
+  {
+    "jour": "Lun 13 Avr",
+    "debut": "08:30",
+    "fin": "09:25",
+    "matiere": "ESPAGNOL LV2",
+    "salle": "C203",
+    "prof": "BASTARDO I.",
+    "couleur": "#ff99cc",
+    "annule": false
+  },
+  {
+    "jour": "Lun 13 Avr",
+    "debut": "09:25",
+    "fin": "10:20",
+    "matiere": "ESPAGNOL LV2",
+    "salle": "C203",
+    "prof": "BASTARDO I.",
+    "couleur": "#ff99cc",
+    "annule": false
+  },
+  {
+    "jour": "Lun 13 Avr",
+    "debut": "10:35",
+    "fin": "11:30",
+    "matiere": "MANAGEMENT & GESTION",
+    "salle": "C3RESEAU 6",
+    "prof": "HASSEN S.",
+    "couleur": "#3366ff",
+    "annule": false
+  },
+  {
+    "jour": "Lun 13 Avr",
+    "debut": "12:25",
+    "fin": "13:45",
+    "matiere": "SCIENCES VIE & TERRE",
+    "salle": "Labo1",
+    "prof": "GAUDEX A.",
+    "couleur": "#33cc33",
+    "annule": false
+  },
+  {
+    "jour": "Lun 13 Avr",
+    "debut": "14:05",
+    "fin": "15:25",
+    "matiere": "PHYSIQUE-CHIMIE",
+    "salle": "Labo6",
+    "prof": "LE CUDONNEC M.",
+    "couleur": "#33cc33",
+    "annule": false
+  },
+  {
+    "jour": "Mar 14 Avr",
+    "debut": "",
+    "fin": "",
+    "matiere": "EPS OPTION",
+    "salle": "",
+    "prof": "MORI J.",
+    "couleur": "#f3f3f3",
+    "annule": true
+  },
+  {
+    "jour": "Mar 14 Avr",
+    "debut": "08:30",
+    "fin": "09:25",
+    "matiere": "HISTOIRE-GEOGRAPHIE",
+    "salle": "C3 RESEAU 5",
+    "prof": "PRAQUIN V.",
+    "couleur": "#66ccff",
+    "annule": false
+  },
+  {
+    "jour": "Mar 14 Avr",
+    "debut": "09:25",
+    "fin": "10:20",
+    "matiere": "MATHEMATIQUES",
+    "salle": "C203",
+    "prof": "GARNIER F., PASTOR E.",
+    "couleur": "#ffcc66",
+    "annule": false
+  },
+  {
+    "jour": "Mar 14 Avr",
+    "debut": "11:30",
+    "fin": "12:25",
+    "matiere": "MANAGEMENT & GESTION",
+    "salle": "C3 RESEAU 2",
+    "prof": "HASSEN S.",
+    "couleur": "#3366ff",
+    "annule": false
+  },
+  {
+    "jour": "Mar 14 Avr",
+    "debut": "13:20",
+    "fin": "14:15",
+    "matiere": "HISTOIRE-GEOGRAPHIE",
+    "salle": "C203",
+    "prof": "PRAQUIN V.",
+    "couleur": "#66ccff",
+    "annule": false
+  },
+  {
+    "jour": "Mar 14 Avr",
+    "debut": "14:15",
+    "fin": "15:10",
+    "matiere": "HISTOIRE-GEOGRAPHIE",
+    "salle": "C203",
+    "prof": "PRAQUIN V.",
+    "couleur": "#66ccff",
+    "annule": false
+  },
+  {
+    "jour": "Mar 14 Avr",
+    "debut": "15:25",
+    "fin": "16:20",
+    "matiere": "MATHEMATIQUES",
+    "salle": "C203",
+    "prof": "GARNIER F., PASTOR E.",
+    "couleur": "#ffcc66",
+    "annule": false
+  },
+  {
+    "jour": "Mar 14 Avr",
+    "debut": "16:20",
+    "fin": "17:15",
+    "matiere": "SC. ECONO.& SOCIALES",
+    "salle": "C203",
+    "prof": "KARST B.",
+    "couleur": "#00ccff",
+    "annule": false
+  },
+  {
+    "jour": "Mer 15 Avr",
+    "debut": "08:30",
+    "fin": "09:25",
+    "matiere": "ESPAGNOL LV2",
+    "salle": "C203",
+    "prof": "BASTARDO I.",
+    "couleur": "#ff99cc",
+    "annule": false
+  },
+  {
+    "jour": "Mer 15 Avr",
+    "debut": "09:25",
+    "fin": "10:20",
+    "matiere": "VIE DE CLASSE",
+    "salle": "C203",
+    "prof": "KAUFF H.",
+    "couleur": "#b80d0d",
+    "annule": false
+  },
+  {
+    "jour": "Mer 15 Avr",
+    "debut": "10:35",
+    "fin": "12:25",
+    "matiere": "ED.PHYSIQUE & SPORT.",
+    "salle": "GYMNASE 5",
+    "prof": "GROS E.",
+    "couleur": "#ffff66",
+    "annule": false
+  },
+  {
+    "jour": "Mer 15 Avr",
+    "debut": "13:20",
+    "fin": "15:10",
+    "matiere": "FRANCAIS",
+    "salle": "C203",
+    "prof": "KAUFF H.",
+    "couleur": "#1186fe",
+    "annule": false
+  },
+  {
+    "jour": "Jeu 16 Avr",
+    "debut": "08:30",
+    "fin": "09:25",
+    "matiere": "MATHEMATIQUES",
+    "salle": "C203",
+    "prof": "PASTOR E., GARNIER F.",
+    "couleur": "#ffcc66",
+    "annule": false
+  },
+  {
+    "jour": "Jeu 16 Avr",
+    "debut": "09:25",
+    "fin": "10:20",
+    "matiere": "MATHEMATIQUES",
+    "salle": "C203",
+    "prof": "GARNIER F., PASTOR E.",
+    "couleur": "#ffcc66",
+    "annule": false
+  },
+  {
+    "jour": "Jeu 16 Avr",
+    "debut": "11:05",
+    "fin": "12:25",
+    "matiere": "SC.NUMERIQ.TECHNOL.",
+    "salle": "Labo4",
+    "prof": "KAMARA S.",
+    "couleur": "#999933",
+    "annule": false
+  },
+  {
+    "jour": "Jeu 16 Avr",
+    "debut": "13:20",
+    "fin": "14:15",
+    "matiere": "ANGLAIS LV1",
+    "salle": "C203",
+    "prof": "BEN SALAH F.",
+    "couleur": "#ff99cc",
+    "annule": false
+  },
+  {
+    "jour": "Ven 17 Avr",
+    "debut": "09:25",
+    "fin": "10:20",
+    "matiere": "ANGLAIS LV1",
+    "salle": "C203",
+    "prof": "BEN SALAH F.",
+    "couleur": "#ff99cc",
+    "annule": false
+  },
+  {
+    "jour": "Ven 17 Avr",
+    "debut": "10:35",
+    "fin": "11:30",
+    "matiere": "ANGLAIS LV1",
+    "salle": "C203",
+    "prof": "BEN SALAH F.",
+    "couleur": "#ff99cc",
+    "annule": false
+  },
+  {
+    "jour": "Ven 17 Avr",
+    "debut": "11:30",
+    "fin": "12:25",
+    "matiere": "PHYSIQUE-CHIMIE",
+    "salle": "C203",
+    "prof": "LE CUDONNEC M.",
+    "couleur": "#33cc33",
+    "annule": false
+  },
+  {
+    "jour": "Ven 17 Avr",
+    "debut": "13:20",
+    "fin": "14:15",
+    "matiere": "FRANCAIS",
+    "salle": "C203",
+    "prof": "KAUFF H.",
+    "couleur": "#1186fe",
+    "annule": false
+  },
+  {
+    "jour": "Ven 17 Avr",
+    "debut": "15:25",
+    "fin": "16:20",
+    "matiere": "FRANCAIS",
+    "salle": "C203",
+    "prof": "KAUFF H.",
+    "couleur": "#1186fe",
+    "annule": false
+  },
+  {
+    "jour": "Sam 18 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false
+  },
+  {
+    "jour": "Dim 19 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false
+  }
+]
