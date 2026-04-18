@@ -25,9 +25,9 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # C'est LA ligne magique : On met le point '.' pour envoyer 
-          # directement tout ton dossier avec index.html et data_edt.json
-          path: '.' 
+          # On cible le dossier exact où se trouve ton index.html
+          # Si ton arborescence est bien celle du ZIP :
+          path: './Site' 
           
       - name: Deploy to GitHub Pages
         id: deployment
