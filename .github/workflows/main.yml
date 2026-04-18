@@ -66,3 +66,10 @@ jobs:
           name: debug-screenshots-${{ github.run_id }}
           path: Site/
           retention-days: 1
+       - name: 📥 Récupérer les photos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          # On ajoute l'heure et la date au nom pour qu'il soit UNIQUE
+          name: debug-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Site/
