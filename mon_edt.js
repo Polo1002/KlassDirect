@@ -20,11 +20,18 @@ if (fs.existsSync('./config.js')) {
 }
 
 (async () => {
+  // CONFIGURATION POUR GITHUB ACTIONS (Linux Sans Écran)
   const browser = await puppeteer.launch({ 
-    headless: false, 
-    slowMo: 100,
-    args: ['--start-maximized'] 
+    headless: "new", 
+    slowMo: 50,
+    args: [
+      '--no-sandbox', 
+      '--disable-setuid-sandbox', 
+      '--disable-dev-shm-usage',
+      '--window-size=1280,800'
+    ] 
   }); 
+
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
 
@@ -37,6 +44,7 @@ if (fs.existsSync('./config.js')) {
     await page.type('input[name="password"]', MOT_DE_PASSE);
     await page.click('button[type="submit"]');
 
+    // Gestion de la sécurité (Modals)
     for (let i = 0; i < 3; i++) {
         try {
             await page.waitForSelector('.modal-content', { timeout: 5000 });
@@ -109,12 +117,17 @@ if (fs.existsSync('./config.js')) {
         return jourA - jourB || a.debut.localeCompare(b.debut);
     });
 
+    // On s'assure que le dossier Site existe avant d'écrire (sécurité locale)
+    if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site'); }
+
     fs.writeFileSync('./Site/data_edt.json', JSON.stringify(resultats, null, 2));
-    console.log("\n🚀 SUCCÈS : data_edt.json mis à jour.");
+    console.log("\n🚀 SUCCÈS : Site/data_edt.json mis à jour.");
 
   } catch (err) {
     console.error("💥 Erreur :", err.message);
+    process.exit(1); // Crucial pour que GitHub marque l'action comme échouée en cas d'erreur
   } finally {
-    setTimeout(async () => { await browser.close(); }, 5000);
+    await browser.close();
+    console.log("🤖 Navigateur fermé.");
   }
 })();
