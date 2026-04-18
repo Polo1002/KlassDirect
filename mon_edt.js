@@ -74,8 +74,14 @@ async function autoLog(page, message) {
         }, RÉPONSES_SÉCURITÉ);
         await autoLog(page, "Reponse securite selectionnee");
         
-        await page.click('button.btn-primary');
+        // --- CORRECTION ICI ---
+        const btnSelector = 'button.btn-primary, .modal-footer button, button[type="submit"]';
+        await page.waitForSelector(btnSelector, { visible: true, timeout: 5000 });
+        await page.click(btnSelector);
+        // -----------------------
+
         await new Promise(r => setTimeout(r, 5000));
+        await autoLog(page, "Apres validation securite");
         await autoLog(page, "Apres validation securite");
     } else if (isStillOnLogin) {
         throw new Error("Échec de connexion : Identifiants incorrects ou page bloquée.");
