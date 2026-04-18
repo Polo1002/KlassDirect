@@ -25,9 +25,9 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # On cible le dossier exact où se trouve ton index.html
-          # Si ton arborescence est bien celle du ZIP :
-          path: './Site' 
+          # C'est ici qu'on corrige le 404. 
+          # On donne le chemin complet depuis la racine.
+          path: './KlassDirect/Site'
           
       - name: Deploy to GitHub Pages
         id: deployment
