@@ -103,30 +103,45 @@ async function autoLog(page, message) {
 
     // --- NAVIGATION EDT ---
     console.log("🚀 Navigation vers l'EDT...");
-    // On utilise la navigation par clic si possible, ou goto avec un délai
     await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle0' });
     
     await pause(6000);
     await autoLog(page, "Page_EDT_Finale");
 
-    const cours = await page.evaluate(() => {
-        return Array.from(document.querySelectorAll('.dhx_cal_event')).map(e => ({
-            matiere: e.querySelector('.edt-cours-text')?.innerText.trim(),
-            heure: e.querySelector('.dhx_event_time')?.innerText.trim()
-        }));
+    // Extraction et formatage des données
+    const donneesEDT = await page.evaluate(() => {
+        // Cette fonction s'exécute dans le navigateur
+        return Array.from(document.querySelectorAll('.dhx_cal_event')).map(e => {
+            const matiere = e.querySelector('.edt-cours-text')?.innerText.trim() || "Matière inconnue";
+            const heureTexte = e.querySelector('.dhx_event_time')?.innerText.trim() || "";
+            
+            // On sépare l'heure (ex: "08:30 - 09:25")
+            const [debut, fin] = heureTexte.split(' - ');
+
+            return {
+                jour: new Date().toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }), // Format "Lun 13 Avr"
+                debut: debut || "",
+                fin: fin || "",
+                matiere: matiere,
+                salle: e.querySelector('.edt-salle')?.innerText.trim() || "",
+                prof: e.querySelector('.edt-prof')?.innerText.trim() || "",
+                couleur: e.style.backgroundColor || "#6366f1",
+                annule: e.classList.contains('event_annule')
+            };
+        });
     });
 
-    if (cours.length > 0) {
-        console.log(`✅ SUCCÈS : ${cours.length} cours récupérés.`);
-        // Par celle-ci :
-        fs.writeFileSync('./Site/data_edt.json', JSON.stringify(donneesFinales, null, 2));
+    if (donneesEDT.length > 0) {
+        console.log(`✅ SUCCÈS : ${donneesEDT.length} cours récupérés.`);
+        
+        // ENREGISTREMENT À LA RACINE DU PROJET
+        fs.writeFileSync('./data_edt.json', JSON.stringify(donneesEDT, null, 2));
+        console.log("💾 Fichier data_edt.json mis à jour à la racine.");
     } else {
-        console.log("❌ ÉCHEC : Aucun cours. Vérifiez la capture 02.");
+        console.log("❌ ÉCHEC : Aucun cours trouvé sur la page.");
     }
 
-  } catch (err) {
-    console.error(`💥 ERREUR : ${err.message}`);
-  } finally {
     await browser.close();
+    console.log("🏁 Script terminé.");
   }
 })();
