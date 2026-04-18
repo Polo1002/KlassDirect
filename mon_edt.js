@@ -20,10 +20,9 @@ if (fs.existsSync('./config.js')) {
 }
 
 (async () => {
-  // CONFIGURATION POUR GITHUB ACTIONS (Linux Sans Écran)
+  // CONFIGURATION POUR GITHUB ACTIONS
   const browser = await puppeteer.launch({ 
     headless: "new", 
-    slowMo: 50,
     args: [
       '--no-sandbox', 
       '--disable-setuid-sandbox', 
@@ -68,12 +67,19 @@ if (fs.existsSync('./config.js')) {
         }
     }
 
+    // --- BLOC AVEC TEMPS D'ATTENTE AUGMENTÉ ---
+    console.log("⏳ Attente du chargement du tableau de bord (30s max)...");
+    await new Promise(r => setTimeout(r, 5000)); // Petite pause de confort
+
     const selectorEDT = 'a[aria-label="Emploi du temps"]';
-    await page.waitForSelector(selectorEDT, { timeout: 15000 });
+    
+    // On attend 30000ms (30 secondes) que le bouton apparaisse
+    await page.waitForSelector(selectorEDT, { timeout: 30000, visible: true });
     await page.click(selectorEDT);
+    // ------------------------------------------
 
     console.log("🔍 Extraction des cours pour KlassDirect...");
-    await page.waitForSelector('.dhx_cal_event', { timeout: 15000 });
+    await page.waitForSelector('.dhx_cal_event', { timeout: 20000 });
 
     const resultats = await page.evaluate(() => {
         const joursElements = Array.from(document.querySelectorAll('.dhx_scale_bar'));
@@ -117,7 +123,7 @@ if (fs.existsSync('./config.js')) {
         return jourA - jourB || a.debut.localeCompare(b.debut);
     });
 
-    // On s'assure que le dossier Site existe avant d'écrire (sécurité locale)
+    // Vérification du dossier Site
     if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site'); }
 
     fs.writeFileSync('./Site/data_edt.json', JSON.stringify(resultats, null, 2));
@@ -125,7 +131,7 @@ if (fs.existsSync('./config.js')) {
 
   } catch (err) {
     console.error("💥 Erreur :", err.message);
-    process.exit(1); // Crucial pour que GitHub marque l'action comme échouée en cas d'erreur
+    process.exit(1); 
   } finally {
     await browser.close();
     console.log("🤖 Navigateur fermé.");
