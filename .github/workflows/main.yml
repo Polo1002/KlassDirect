@@ -34,3 +34,9 @@ jobs:
         with:
           name: debug-screenshots
           path: Site/
+      - name: Upload Screenshots
+        if: always() # Obligatoire pour avoir les photos même si ça plante
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-debug
+          path: Site/*.png
