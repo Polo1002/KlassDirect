@@ -3,7 +3,6 @@ const fs = require('fs');
 
 let IDENTIFIANT, MOT_DE_PASSE, RÉPONSES_SÉCURITÉ;
 
-// Chargement des identifiants (Local ou GitHub Actions)
 if (fs.existsSync('./config.js')) {
     const config = require('./config.js');
     IDENTIFIANT = config.IDENTIFIANT;
@@ -21,28 +20,18 @@ if (!fs.existsSync(DIR)) { fs.mkdirSync(DIR, { recursive: true }); }
 
 let step = 1;
 
-/**
- * Fonction de log combinée : capture d'écran + info console
- */
+// Fonction pour simuler une pause humaine aléatoire
+const pauseHumaine = (min = 1000, max = 3000) => 
+    new Promise(r => setTimeout(r, Math.floor(Math.random() * (max - min + 1) + min)));
+
 async function autoLog(page, message) {
     const info = await page.evaluate(() => ({
         url: window.location.href,
         text: document.body.innerText.substring(0, 300).replace(/\n/g, ' | ')
     }));
-
     const fileName = `${step.toString().padStart(2, '0')}_${message.replace(/\s+/g, '_').toLowerCase()}.png`;
-    
-    try {
-        await page.screenshot({ path: `${DIR}/${fileName}`, fullPage: true });
-    } catch (e) {
-        // Silencieux si screenshot échoue
-    }
-
+    try { await page.screenshot({ path: `${DIR}/${fileName}`, fullPage: true }); } catch (e) {}
     console.log(`\n[ÉTAPE ${step}] 📸 ${message.toUpperCase()}`);
-    console.log(`🔗 URL : ${info.url}`);
-    console.log(`📖 TXT : ${info.text}...`);
-    console.log(`-------------------------------------------`);
-    
     step++;
 }
 
@@ -58,45 +47,58 @@ async function autoLog(page, message) {
   try {
     console.log("🌐 DÉMARRAGE DU PROCESSUS D'EXTRACTION...");
 
-    // --- ÉTAPE 1 : CONNEXION INITIALE ---
     await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
     
+    // Simulation saisie humaine
+    await pauseHumaine(1500, 3000);
     await page.evaluate((id, mdp) => {
         const u = document.querySelector('#username');
         const p = document.querySelector('#password');
         if (u && p) {
-            u.value = id;
-            p.value = mdp;
-            u.dispatchEvent(new Event('input', { bubbles: true }));
-            p.dispatchEvent(new Event('input', { bubbles: true }));
+            u.value = id; u.dispatchEvent(new Event('input', { bubbles: true }));
         }
-    }, IDENTIFIANT, MOT_DE_PASSE);
-    
+    }, IDENTIFIANT);
+    await pauseHumaine(500, 1500);
+    await page.evaluate((mdp) => {
+        const p = document.querySelector('#password');
+        if (p) {
+            p.value = mdp; p.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }, MOT_DE_PASSE);
+
     await autoLog(page, "Saisie identifiants");
+    await pauseHumaine(800, 2000);
     await page.click('#connexion');
     
-    // Attente initiale pour voir si la sécurité apparaît
     await new Promise(r => setTimeout(r, 6000));
 
-    // --- ÉTAPE 2 : GESTION DES QUESTIONS DE SÉCURITÉ EN BOUCLE ---
-    let enAttenteSecurite = true;
+    // --- ÉTAPE 2 : GESTION DES QUESTIONS (LOGIQUE HUMAINE & FENÊTRE DU HAUT) ---
     let loopCount = 0;
+    let enAttenteSecurite = true;
 
     while (enAttenteSecurite && loopCount < 5) {
         const check = await page.evaluate(() => {
-            const isVisible = !!document.querySelector('ed-questions2-fa-auth, .modal-content');
-            const hasText = document.body.innerText.includes("CONFIRMEZ VOTRE IDENTITÉ");
-            const question = document.querySelector('h3.mt-0')?.innerText || "";
-            return { isVisible, hasText, question };
+            const modals = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content'));
+            const isVisible = modals.length > 0;
+            const question = modals.pop()?.querySelector('h3.mt-0')?.innerText || "";
+            return { isVisible, question };
         });
 
-        if (check.isVisible || check.hasText) {
+        if (check.isVisible) {
             loopCount++;
             console.log(`🛡️ Question détectée (${loopCount}) : "${check.question}"`);
+            
+            // Temps de lecture de la question
+            await pauseHumaine(2000, 4000); 
             await autoLog(page, `Securite_Question_${loopCount}`);
 
             const success = await page.evaluate((reps) => {
-                const labels = Array.from(document.querySelectorAll('label'));
+                // On cible uniquement la fenêtre tout en haut de la pile
+                const modals = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content'));
+                const topModal = modals.pop();
+                if (!topModal) return false;
+
+                const labels = Array.from(topModal.querySelectorAll('label'));
                 let found = false;
                 
                 for (let r of reps) {
@@ -116,37 +118,37 @@ async function autoLog(page, message) {
                 }
 
                 if (found) {
-                    const btn = document.querySelector('button[type="submit"]');
+                    const btn = topModal.querySelector('button[type="submit"]');
                     if (btn) {
                         btn.removeAttribute('disabled');
-                        btn.click();
+                        // On clique après un court délai simulé par le script
+                        setTimeout(() => btn.click(), 800);
                     }
                 }
                 return found;
             }, RÉPONSES_SÉCURITÉ);
 
             if (success) {
-                console.log("📤 Réponse envoyée, attente de la suite...");
-                await new Promise(r => setTimeout(r, 7000)); // Temps pour la question suivante ou redirection
+                console.log("📤 Réponse envoyée...");
+                await new Promise(r => setTimeout(r, 7000)); 
             } else {
-                console.log("⚠️ Aucune de vos réponses ne correspond à cette question.");
+                console.log("⚠️ Aucune réponse correspondante.");
                 break; 
             }
         } else {
-            console.log("✅ Plus de barrière de sécurité détectée.");
+            console.log("✅ Accès libéré.");
             enAttenteSecurite = false;
         }
     }
 
-    // --- ÉTAPE 3 : ACCÈS À L'EMPLOI DU TEMPS ---
-    console.log("🚀 Navigation vers l'Emploi du Temps...");
+    // --- ÉTAPE 3 : NAVIGATION ---
+    console.log("🚀 Navigation vers l'EDT...");
     await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { 
         waitUntil: 'networkidle0',
         timeout: 60000 
     });
     
-    // Petit délai pour laisser les cours s'afficher graphiquement
-    await new Promise(r => setTimeout(r, 5000));
+    await pauseHumaine(3000, 5000);
     await autoLog(page, "Page EDT finale");
 
     const cours = await page.evaluate(() => {
@@ -160,12 +162,7 @@ async function autoLog(page, message) {
         console.log(`✅ SUCCÈS : ${cours.length} cours trouvés.`);
         fs.writeFileSync(`${DIR}/data_edt.json`, JSON.stringify(cours, null, 2));
     } else {
-        console.log("❌ ÉCHEC : Aucun cours trouvé sur la page.");
-        // Vérifier si on a été déconnecté
-        const finalUrl = page.url();
-        if (finalUrl.includes('login')) {
-            console.log("🚨 Cause : Le site nous a renvoyé sur la page de login.");
-        }
+        console.log("❌ ÉCHEC : Aucun cours trouvé.");
     }
 
   } catch (err) {
