@@ -25,7 +25,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # On essaie sans répéter le nom du dépôt
+          # On retire "KlassDirect/" car l'action est déjà dans le dépôt.
+          # On vise directement le dossier où se trouve ton index.html.
           path: './Site'
           
       - name: Deploy to GitHub Pages
