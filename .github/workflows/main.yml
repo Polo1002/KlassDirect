@@ -41,8 +41,14 @@ jobs:
           name: screenshots-debug
           path: Site/*.png
       - name: Récupérer les captures d'écran
-      if: always() # S'exécute même si le script a planté
-      uses: actions/upload-artifact@v4
-      with:
-        name: debug-images
-        path: Site/*.png
+        if: always() # S'exécute même si le script a planté
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-images
+          path: Site/*.png
+      - name: Upload Debug Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-ecole-directe
+          path: Site/*.png
