@@ -11,7 +11,9 @@ if (fs.existsSync('./config.js')) {
 } else {
     IDENTIFIANT = process.env.ED_IDENTIFIANT;
     MOT_DE_PASSE = process.env.MOT_DE_PASSE; 
-    RÉPONSES_SÉCURITÉ = process.env.ED_REPONSES ? process.env.ED_REPONSES.split(',') : [];
+    // On nettoie les secrets au cas où il y aurait des guillemets ou espaces en trop
+    RÉPONSES_SÉCURITÉ = process.env.ED_REPONSES ? 
+        process.env.ED_REPONSES.split(',').map(s => s.replace(/["']/g, "").trim()) : [];
 }
 
 const DIR = './Site';
@@ -31,11 +33,6 @@ async function autoLog(page, message) {
 }
 
 (async () => {
-  if (!IDENTIFIANT || !MOT_DE_PASSE) {
-      console.error("❌ Erreur : IDENTIFIANT ou MOT_DE_PASSE est vide.");
-      process.exit(1);
-  }
-
   const browser = await puppeteer.launch({ 
     headless: "new", 
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
@@ -47,122 +44,86 @@ async function autoLog(page, message) {
   try {
     console.log("🌐 Démarrage du processus...");
     await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
-    await autoLog(page, "Page de login chargee");
-
-    await page.waitForSelector('#username', { timeout: 10000 });
     
-    console.log("⌨️ Saisie des identifiants (Injection)...");
+    await page.waitForSelector('#username', { timeout: 10000 });
     await page.evaluate((id, mdp) => {
-        const u = document.querySelector('#username');
-        const p = document.querySelector('#password');
-        u.value = id;
-        p.value = mdp;
-        u.dispatchEvent(new Event('input', { bubbles: true }));
-        p.dispatchEvent(new Event('input', { bubbles: true }));
+        document.querySelector('#username').value = id;
+        document.querySelector('#password').value = mdp;
+        document.querySelector('#username').dispatchEvent(new Event('input', { bubbles: true }));
+        document.querySelector('#password').dispatchEvent(new Event('input', { bubbles: true }));
     }, IDENTIFIANT, MOT_DE_PASSE);
     
     await autoLog(page, "Identifiants saisis");
-
-    console.log("🖱️ Clic sur Connexion...");
     await page.click('#connexion');
     await new Promise(r => setTimeout(r, 8000));
-    await autoLog(page, "Apres clic connexion");
 
     const securityCheck = await page.$('ed-questions2-fa-auth, .modal-content'); 
 
     if (securityCheck) {
         console.log("🛡️ Double authentification détectée...");
         
-        // --- NOUVEAU : RÉCUPÉRATION ET AFFICHAGE DU TEXTE ---
-        const pageText = await page.evaluate(() => {
-            // On récupère le titre de la question et tous les labels de réponse
-            const question = document.querySelector('h3')?.innerText || "Question inconnue";
+        const pageContent = await page.evaluate(() => {
             const labels = Array.from(document.querySelectorAll('label')).map(l => l.innerText.trim());
-            return { question, labels };
+            return { labels };
         });
 
-        console.log("📝 CONTENU DÉTECTÉ SUR LA PAGE :");
-        console.log(`   Question : "${pageText.question}"`);
-        console.log(`   Réponses affichées : [${pageText.labels.join(' | ')}]`);
-        console.log(`   Vos secrets fournis : [${RÉPONSES_SÉCURITÉ.join(' | ')}]`);
-        // ---------------------------------------------------
+        console.log(`📝 ÉLÉMENTS TROUVÉS : [${pageContent.labels.join(' | ')}]`);
+        console.log(`📝 VOS SECRETS NETTOYÉS : [${RÉPONSES_SÉCURITÉ.join(' | ')}]`);
 
         const selectionReussie = await page.evaluate((reps) => {
             const labels = Array.from(document.querySelectorAll('label'));
-            let found = false;
+            let success = false;
 
             for (let r of reps) {
-                const search = r.trim().toLowerCase();
-                const targetLabel = labels.find(el => el.innerText.trim().toLowerCase() === search);
+                const search = r.toLowerCase();
+                // Recherche par texte exact ou partiel
+                const target = labels.find(el => el.innerText.trim().toLowerCase() === search);
                 
-                if (targetLabel) {
-                    targetLabel.click();
-                    const input = document.getElementById(targetLabel.getAttribute('for'));
+                if (target) {
+                    target.click(); // Clic sur le texte
+                    const input = document.getElementById(target.getAttribute('for'));
                     if (input) {
                         input.checked = true;
                         input.dispatchEvent(new Event('change', { bubbles: true }));
+                        input.click(); // Clic sur le bouton radio
                     }
-                    found = true;
+                    success = true;
                     break;
                 }
             }
-            // Débloque le bouton quoi qu'il arrive
+            // On débloque le bouton envoyer de force
             const btn = document.querySelector('button[type="submit"]');
             if (btn) btn.removeAttribute('disabled');
-            
-            return found;
+            return success;
         }, RÉPONSES_SÉCURITÉ);
 
-        if (selectionReussie) {
-            console.log("✅ Match trouvé ! Sélection effectuée.");
-        } else {
-            console.log("⚠️ Aucune correspondance trouvée dans les secrets.");
-        }
+        console.log(selectionReussie ? "✅ Match trouvé !" : "⚠️ Aucun match.");
+        await autoLog(page, "Apres tentative selection");
 
-        await autoLog(page, "Tentative de selection");
-
-        console.log("📤 Envoi de la réponse...");
         await page.click('button[type="submit"]');
-        await new Promise(r => setTimeout(r, 12000));
-        await autoLog(page, "Apres validation securite");
+        await new Promise(r => setTimeout(r, 15000));
     }
 
     console.log("🚀 Accès à l'emploi du temps...");
     await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { 
         waitUntil: 'networkidle0',
-        timeout: 45000 
+        timeout: 60000 
     });
     
     await new Promise(r => setTimeout(r, 5000));
-    await autoLog(page, "Page EDT chargee");
+    await autoLog(page, "Page EDT finale");
 
-    const resultats = await page.evaluate(() => {
-        const events = Array.from(document.querySelectorAll('.dhx_cal_event'));
-        return events.map(event => ({
-            matiere: event.querySelector('.edt-cours-text')?.innerText.trim() || "Inconnu",
-            header: event.querySelector('.edt-cours-header')?.innerText || ""
+    const cours = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('.dhx_cal_event')).map(e => ({
+            m: e.querySelector('.edt-cours-text')?.innerText.trim()
         }));
     });
 
-    if (resultats.length > 0) {
-        fs.writeFileSync(`${DIR}/data_edt.json`, JSON.stringify(resultats, null, 2));
-        console.log(`✅ SUCCÈS : ${resultats.length} cours trouvés.`);
-    } else {
-        console.log("❌ Aucun cours trouvé dans le calendrier.");
-    }
-
-    await autoLog(page, "Fin de processus");
+    console.log(`✅ FIN : ${cours.length} cours trouvés.`);
+    if (cours.length > 0) fs.writeFileSync(`${DIR}/data_edt.json`, JSON.stringify(cours, null, 2));
 
   } catch (err) {
-    console.error("💥 ERREUR FATALE :");
-    console.error(`   Message : ${err.message}`);
-    // Affiche le texte de la page en cas d'erreur pour débugger
-    try {
-        const bodyText = await page.evaluate(() => document.body.innerText.substring(0, 500));
-        console.log("   Aperçu du texte de la page au moment de l'erreur :");
-        console.log(`   "${bodyText}..."`);
-    } catch (e) {}
-    
+    console.error(`💥 ERREUR : ${err.message}`);
     if (page) await autoLog(page, "Erreur fatale");
     process.exit(1);
   } finally {
