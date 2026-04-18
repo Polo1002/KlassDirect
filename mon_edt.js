@@ -17,84 +17,85 @@ if (fs.existsSync('./config.js')) {
 async function takeScreenshot(page, name) {
     if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site', { recursive: true }); }
     await page.screenshot({ path: `./Site/${name}.png`, fullPage: true });
-    console.log(`📸 Capture d'écran sauvegardée : ${name}.png`);
+    console.log(`📸 Capture d'écran : ${name}.png`);
 }
 
 (async () => {
   const browser = await puppeteer.launch({ 
     headless: "new", 
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--window-size=1600,900'] 
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
   }); 
 
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 900 });
 
   try {
-    console.log("🌐 Connexion à EcoleDirecte...");
+    console.log("🌐 Étape 1 : Page de connexion...");
     await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
 
-    await page.waitForSelector('#username', { timeout: 15000 });
-    await page.evaluate((id, pwd) => {
-        const u = document.getElementById('username');
-        const p = document.getElementById('password');
-        u.value = id;
-        p.value = pwd;
-        u.dispatchEvent(new Event('input', { bubbles: true }));
-        p.dispatchEvent(new Event('input', { bubbles: true }));
-    }, IDENTIFIANT, MOT_DE_PASSE);
+    // On attend explicitement que les inputs soient là
+    await page.waitForSelector('#username', { timeout: 10000 });
+    
+    console.log("⌨️ Saisie des identifiants...");
+    // Saisie plus "humaine" pour éviter d'être bloqué
+    await page.type('#username', IDENTIFIANT, { delay: 50 });
+    await page.type('#password', MOT_DE_PASSE, { delay: 50 });
 
+    await takeScreenshot(page, '1_avant_connexion'); // Vérifier si les champs sont remplis
+
+    console.log("🖱️ Clic sur Connexion...");
     await page.click('#connexion');
-    await new Promise(r => setTimeout(r, 5000));
+    
+    // On attend de voir si on change de page ou si une erreur apparaît
+    await new Promise(r => setTimeout(r, 6000));
 
-    // Sécurité / Questions
-    const needsSecurity = await page.$('.modal-content');
-    if (needsSecurity) {
-        console.log("🛡️ Sécurité détectée...");
+    // Vérification de la double authentification (Questions de sécurité)
+    const securityCheck = await page.$('input[type="checkbox"]'); 
+    const isStillOnLogin = await page.$('#username');
+
+    if (isStillOnLogin && !securityCheck) {
+        throw new Error("❌ Échec de connexion : Toujours sur la page de login après clic.");
+    }
+
+    if (securityCheck) {
+        console.log("🛡️ Sécurité détectée (Questions)...");
         await page.evaluate((reps) => {
             const labels = Array.from(document.querySelectorAll('label'));
             for (let r of reps) {
                 const c = labels.find(el => el.innerText.trim().toLowerCase() === r.toLowerCase());
-                if (c) { c.click(); break; }
+                if (c) { c.click(); return; }
             }
         }, RÉPONSES_SÉCURITÉ);
         await page.click('button.btn-primary');
         await new Promise(r => setTimeout(r, 5000));
     }
 
-    console.log("🚀 Accès à l'emploi du temps...");
-    // Utilisation de l'ID 10042
+    console.log("🚀 Étape 2 : Accès à l'EDT...");
     await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { 
         waitUntil: 'networkidle0',
         timeout: 60000 
     });
     
-    console.log("⏳ Attente de l'apparition des cours...");
-    // On attend que l'un des blocs de cours soit réellement présent dans le DOM
-    try {
-        await page.waitForSelector('.dhx_cal_event', { timeout: 15000, visible: true });
-    } catch (e) {
-        console.log("⚠️ Sélecteur standard non trouvé, tentative de secours...");
-        await new Promise(r => setTimeout(r, 5000)); // Dernier délai de grâce
-    }
+    await new Promise(r => setTimeout(r, 5000));
+    await takeScreenshot(page, '2_page_edt'); // Pour voir si l'agenda est là
 
     const resultats = await page.evaluate(() => {
+        const events = Array.from(document.querySelectorAll('.dhx_cal_event'));
         const joursElements = Array.from(document.querySelectorAll('.dhx_scale_bar'));
+        
         const colonnes = joursElements.map(el => {
             const rect = el.getBoundingClientRect();
             return { nom: el.innerText.trim(), left: rect.left, right: rect.right };
         });
-        
-        const events = Array.from(document.querySelectorAll('.dhx_cal_event'));
+
         return events.map(event => {
             const rect = event.getBoundingClientRect();
             const centreX = rect.left + (rect.width / 2);
             const jourMatch = colonnes.find(col => centreX >= col.left && centreX <= col.right);
-            
             const header = event.querySelector('.edt-cours-header')?.innerText || "";
             const matiere = event.querySelector('.edt-cours-text')?.innerText.trim() || "Inconnu";
             const prof = Array.from(event.querySelectorAll('.edt-prof')).map(p => p.innerText.trim()).join(', ');
             const salle = event.querySelector('.float-end')?.innerText.trim() || "";
-            
             const matchHeure = header.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
             
             return {
@@ -110,9 +111,7 @@ async function takeScreenshot(page, name) {
         });
     });
 
-    if (resultats.length === 0) {
-        throw new Error("Extraction vide : Aucun cours n'a pu être lu.");
-    }
+    if (resultats.length === 0) throw new Error("EDT vide : Aucun cours trouvé.");
 
     if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site'); }
     fs.writeFileSync('./Site/data_edt.json', JSON.stringify(resultats, null, 2));
@@ -120,7 +119,7 @@ async function takeScreenshot(page, name) {
 
   } catch (err) {
     console.error("💥 ERREUR :", err.message);
-    await takeScreenshot(page, 'erreur_capture');
+    await takeScreenshot(page, 'erreur_fatale');
     process.exit(1);
   } finally {
     await browser.close();
