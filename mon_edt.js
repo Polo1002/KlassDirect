@@ -3,6 +3,7 @@ const fs = require('fs');
 
 let IDENTIFIANT, MOT_DE_PASSE, RÉPONSES_SÉCURITÉ;
 
+// Chargement des identifiants (Local ou GitHub Actions)
 if (fs.existsSync('./config.js')) {
     const config = require('./config.js');
     IDENTIFIANT = config.IDENTIFIANT;
@@ -20,18 +21,28 @@ if (!fs.existsSync(DIR)) { fs.mkdirSync(DIR, { recursive: true }); }
 
 let step = 1;
 
+/**
+ * Fonction de log combinée : capture d'écran + info console
+ */
 async function autoLog(page, message) {
     const info = await page.evaluate(() => ({
         url: window.location.href,
-        text: document.body.innerText.substring(0, 400).replace(/\n/g, ' | ')
+        text: document.body.innerText.substring(0, 300).replace(/\n/g, ' | ')
     }));
+
     const fileName = `${step.toString().padStart(2, '0')}_${message.replace(/\s+/g, '_').toLowerCase()}.png`;
-    try { await page.screenshot({ path: `${DIR}/${fileName}`, fullPage: true }); } catch (e) {}
+    
+    try {
+        await page.screenshot({ path: `${DIR}/${fileName}`, fullPage: true });
+    } catch (e) {
+        // Silencieux si screenshot échoue
+    }
+
     console.log(`\n[ÉTAPE ${step}] 📸 ${message.toUpperCase()}`);
     console.log(`🔗 URL : ${info.url}`);
-    console.log(`📖 TXT : ${info.text.substring(0, 250)}...`);
-    console.log(`🖼️ FICHIER : ${fileName}`);
+    console.log(`📖 TXT : ${info.text}...`);
     console.log(`-------------------------------------------`);
+    
     step++;
 }
 
@@ -45,93 +56,123 @@ async function autoLog(page, message) {
   await page.setViewport({ width: 1600, height: 900 });
 
   try {
-    console.log("🌐 INITIALISATION DU ROBOT");
+    console.log("🌐 DÉMARRAGE DU PROCESSUS D'EXTRACTION...");
 
-    // --- ÉTAPE 1 : CONNEXION ---
+    // --- ÉTAPE 1 : CONNEXION INITIALE ---
     await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
+    
     await page.evaluate((id, mdp) => {
-        document.querySelector('#username').value = id;
-        document.querySelector('#password').value = mdp;
-        document.querySelector('#username').dispatchEvent(new Event('input', { bubbles: true }));
-        document.querySelector('#password').dispatchEvent(new Event('input', { bubbles: true }));
+        const u = document.querySelector('#username');
+        const p = document.querySelector('#password');
+        if (u && p) {
+            u.value = id;
+            p.value = mdp;
+            u.dispatchEvent(new Event('input', { bubbles: true }));
+            p.dispatchEvent(new Event('input', { bubbles: true }));
+        }
     }, IDENTIFIANT, MOT_DE_PASSE);
     
     await autoLog(page, "Saisie identifiants");
     await page.click('#connexion');
-    await new Promise(r => setTimeout(r, 8000));
+    
+    // Attente initiale pour voir si la sécurité apparaît
+    await new Promise(r => setTimeout(r, 6000));
 
-    // --- ÉTAPE 2 : DOUBLE AUTH ---
-    const pageText = await page.evaluate(() => document.body.innerText);
-    if (pageText.includes("IDENTITÉ") || pageText.includes("CLASSE") || pageText.includes("NAISSANCE")) {
-        await autoLog(page, "Detection securite");
+    // --- ÉTAPE 2 : GESTION DES QUESTIONS DE SÉCURITÉ EN BOUCLE ---
+    let enAttenteSecurite = true;
+    let loopCount = 0;
 
-        const feedback = await page.evaluate((reps) => {
-            const labels = Array.from(document.querySelectorAll('label'));
-            let found = false;
-            let matched = "";
+    while (enAttenteSecurite && loopCount < 5) {
+        const check = await page.evaluate(() => {
+            const isVisible = !!document.querySelector('ed-questions2-fa-auth, .modal-content');
+            const hasText = document.body.innerText.includes("CONFIRMEZ VOTRE IDENTITÉ");
+            const question = document.querySelector('h3.mt-0')?.innerText || "";
+            return { isVisible, hasText, question };
+        });
 
-            for (let r of reps) {
-                const target = labels.find(el => el.innerText.trim().toLowerCase() === r.toLowerCase());
-                if (target) {
-                    matched = target.innerText;
-                    target.click();
-                    const input = document.getElementById(target.getAttribute('for')) || target.querySelector('input');
-                    if (input) {
-                        input.checked = true;
-                        input.dispatchEvent(new Event('change', { bubbles: true }));
+        if (check.isVisible || check.hasText) {
+            loopCount++;
+            console.log(`🛡️ Question détectée (${loopCount}) : "${check.question}"`);
+            await autoLog(page, `Securite_Question_${loopCount}`);
+
+            const success = await page.evaluate((reps) => {
+                const labels = Array.from(document.querySelectorAll('label'));
+                let found = false;
+                
+                for (let r of reps) {
+                    const search = r.toLowerCase();
+                    const target = labels.find(el => el.innerText.trim().toLowerCase() === search);
+                    
+                    if (target) {
+                        target.click();
+                        const input = document.getElementById(target.getAttribute('for'));
+                        if (input) {
+                            input.checked = true;
+                            input.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        found = true;
+                        break;
                     }
-                    found = true; break;
                 }
-            }
-            if (found) {
-                const btn = document.querySelector('button[type="submit"]');
-                if (btn) { btn.removeAttribute('disabled'); btn.click(); }
-            }
-            return { found, matched };
-        }, RÉPONSES_SÉCURITÉ);
 
-        console.log(feedback.found ? `✅ Sélectionné : ${feedback.matched}` : "⚠️ Aucun match !");
-        await autoLog(page, "Validation envoyee");
+                if (found) {
+                    const btn = document.querySelector('button[type="submit"]');
+                    if (btn) {
+                        btn.removeAttribute('disabled');
+                        btn.click();
+                    }
+                }
+                return found;
+            }, RÉPONSES_SÉCURITÉ);
 
-        // BOUCLE D'ATTENTE : On attend que le "Chargement en cours" disparaisse
-        console.log("⏳ Attente de la redirection après sécurité...");
-        for (let i = 0; i < 10; i++) {
-            await new Promise(r => setTimeout(r, 3000));
-            const currentUrl = page.url();
-            if (!currentUrl.includes('login')) break; // On a quitté la page de login
-            console.log(`... Toujours sur login (essai ${i+1}/10)`);
+            if (success) {
+                console.log("📤 Réponse envoyée, attente de la suite...");
+                await new Promise(r => setTimeout(r, 7000)); // Temps pour la question suivante ou redirection
+            } else {
+                console.log("⚠️ Aucune de vos réponses ne correspond à cette question.");
+                break; 
+            }
+        } else {
+            console.log("✅ Plus de barrière de sécurité détectée.");
+            enAttenteSecurite = false;
         }
     }
 
-    // --- ÉTAPE 3 : NAVIGATION EDT ---
-    await autoLog(page, "Tentative acces EDT");
-    
+    // --- ÉTAPE 3 : ACCÈS À L'EMPLOI DU TEMPS ---
+    console.log("🚀 Navigation vers l'Emploi du Temps...");
     await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { 
         waitUntil: 'networkidle0',
         timeout: 60000 
     });
     
+    // Petit délai pour laisser les cours s'afficher graphiquement
     await new Promise(r => setTimeout(r, 5000));
-    await autoLog(page, "Resultat final");
+    await autoLog(page, "Page EDT finale");
 
     const cours = await page.evaluate(() => {
         return Array.from(document.querySelectorAll('.dhx_cal_event')).map(e => ({
-            m: e.querySelector('.edt-cours-text')?.innerText.trim()
+            matiere: e.querySelector('.edt-cours-text')?.innerText.trim(),
+            heure: e.querySelector('.dhx_event_time')?.innerText.trim()
         }));
     });
 
     if (cours.length > 0) {
+        console.log(`✅ SUCCÈS : ${cours.length} cours trouvés.`);
         fs.writeFileSync(`${DIR}/data_edt.json`, JSON.stringify(cours, null, 2));
-        console.log(`✅ SUCCÈS : ${cours.length} cours récupérés !`);
     } else {
-        console.log("❌ ÉCHEC : Aucun cours trouvé.");
+        console.log("❌ ÉCHEC : Aucun cours trouvé sur la page.");
+        // Vérifier si on a été déconnecté
+        const finalUrl = page.url();
+        if (finalUrl.includes('login')) {
+            console.log("🚨 Cause : Le site nous a renvoyé sur la page de login.");
+        }
     }
 
   } catch (err) {
     console.error(`💥 ERREUR : ${err.message}`);
-    await autoLog(page, "Erreur fatale");
     process.exit(1);
   } finally {
     await browser.close();
+    console.log("🏁 Navigateur fermé.");
   }
 })();
