@@ -1,7 +1,6 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 
-// --- CONFIGURATION ---
 let IDENTIFIANT, MOT_DE_PASSE, RÉPONSES_SÉCURITÉ;
 
 if (fs.existsSync('./config.js')) {
@@ -15,8 +14,6 @@ if (fs.existsSync('./config.js')) {
     RÉPONSES_SÉCURITÉ = process.env.ED_REPONSES ? process.env.ED_REPONSES.split(',') : [];
 }
 
-console.log(`🔍 DEBUG INITIAL : ID=${IDENTIFIANT ? 'OK' : 'MANQUANT'} | PWD=${MOT_DE_PASSE ? 'OK' : 'MANQUANT'}`);
-
 (async () => {
   const browser = await puppeteer.launch({ 
     headless: "new", 
@@ -28,58 +25,62 @@ console.log(`🔍 DEBUG INITIAL : ID=${IDENTIFIANT ? 'OK' : 'MANQUANT'} | PWD=${
   await page.setExtraHTTPHeaders({ 'Accept-Language': 'fr-FR,fr;q=0.9' });
 
   try {
-    console.log("🌐 Tentative de connexion...");
-    const response = await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
-    
-    // --- TEST GÉOGRAPHIQUE ---
-    const status = response.status();
-    console.log(`📊 Statut HTTP : ${status}`);
-    if (status === 403 || status === 401) {
-        console.error("❌ Accès refusé (403/401). Il est fort probable qu'EcoleDirecte bloque l'adresse IP de GitHub.");
-    }
+    console.log("🌐 Direction : Page de Login...");
+    await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
 
+    // --- SAISIE "HUMAINE" ---
+    console.log("⌨️ Saisie de l'identifiant...");
     await page.waitForSelector('input[name="username"]', { timeout: 10000 });
-    await page.type('input[name="username"]', IDENTIFIANT);
-    await page.type('input[name="password"]', MOT_DE_PASSE);
+    await page.click('input[name="username"]'); // On clique d'abord
+    await page.type('input[name="username"]', IDENTIFIANT, { delay: 100 }); // On tape lentement
+
+    console.log("⌨️ Saisie du mot de passe...");
+    await page.click('input[name="password"]');
+    await page.type('input[name="password"]', MOT_DE_PASSE, { delay: 100 });
+
+    console.log("🖱️ Clic sur Connexion...");
     await page.click('button[type="submit"]');
 
-    // Attente sécurité
+    // On attend 5 secondes pour laisser passer les éventuelles modals
+    await new Promise(r => setTimeout(r, 5000));
+
+    // Sécurité (Questions)
     for (let i = 0; i < 3; i++) {
         try {
-            await page.waitForSelector('.modal-content', { timeout: 5000 });
-            console.log(`🛡️ Sécurité étape ${i+1}...`);
-            await page.evaluate((reps) => {
-                const labels = Array.from(document.querySelectorAll('label'));
-                for (let r of reps) {
-                    const c = labels.find(el => el.innerText.trim().toLowerCase() === r.toLowerCase());
-                    if (c) { c.click(); return; }
-                }
-            }, RÉPONSES_SÉCURITÉ);
-            await page.click('button.btn-primary');
-            await new Promise(r => setTimeout(r, 2000));
+            const modal = await page.waitForSelector('.modal-content', { timeout: 4000 });
+            if (modal) {
+                console.log(`🛡️ Étape de sécurité ${i+1}...`);
+                await page.evaluate((reps) => {
+                    const labels = Array.from(document.querySelectorAll('label'));
+                    for (let r of reps) {
+                        const cible = labels.find(el => el.innerText.trim().toLowerCase() === r.toLowerCase());
+                        if (cible) { cible.click(); return; }
+                    }
+                }, RÉPONSES_SÉCURITÉ);
+                await page.click('button.btn-primary');
+                await new Promise(r => setTimeout(r, 3000));
+            }
         } catch (e) { break; }
     }
 
-    console.log("🚀 Navigation directe vers l'EDT...");
+    console.log("🚀 Navigation vers l'EDT...");
     await page.goto('https://www.ecoledirecte.com/Eleve/EmploiDuTemps', { waitUntil: 'networkidle2' });
-
+    
     // Attente des cours
     await page.waitForSelector('.dhx_cal_event', { timeout: 20000 });
 
-    // --- TON CODE D'EXTRACTION ORIGINAL ---
     const resultats = await page.evaluate(() => {
         const joursElements = Array.from(document.querySelectorAll('.dhx_scale_bar'));
-        const colonnes = joursElements.map(el => {
-            const rect = el.getBoundingClientRect();
-            return { nom: el.innerText.trim(), left: rect.left, right: rect.right };
-        });
+        const colonnes = joursElements.map(el => ({ nom: el.innerText.trim(), left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right }));
         const events = Array.from(document.querySelectorAll('.dhx_cal_event'));
+        
         return events.map(event => {
-            const rectEvent = event.getBoundingClientRect();
-            const centreEvent = rectEvent.left + (rectEvent.width / 2);
-            const jourMatch = colonnes.find(col => centreEvent >= col.left && centreEvent <= col.right);
+            const rect = event.getBoundingClientRect();
+            const centre = rect.left + (rect.width / 2);
+            const jourMatch = colonnes.find(col => centre >= col.left && centre <= col.right);
             const header = event.querySelector('.edt-cours-header');
             const matchHeure = (header?.innerText || "").match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+            
             return {
                 jour: jourMatch ? jourMatch.nom : "Inconnu",
                 debut: matchHeure ? matchHeure[1] : "",
@@ -93,24 +94,21 @@ console.log(`🔍 DEBUG INITIAL : ID=${IDENTIFIANT ? 'OK' : 'MANQUANT'} | PWD=${
         });
     });
 
+    const ordreJours = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+    resultats.sort((a, b) => {
+        const jourA = ordreJours.indexOf(a.jour.split(' ')[0]);
+        const jourB = ordreJours.indexOf(b.jour.split(' ')[0]);
+        return jourA - jourB || a.debut.localeCompare(b.debut);
+    });
+
     if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site'); }
     fs.writeFileSync('./Site/data_edt.json', JSON.stringify(resultats, null, 2));
-    console.log("✅ SUCCÈS.");
+    console.log("\n✅ SUCCÈS : Données récupérées !");
 
   } catch (err) {
-    console.error("💥 ERREUR DÉTECTÉE :", err.message);
-    
-    // --- SAUVEGARDE DES PREUVES ---
+    console.error("💥 ERREUR :", err.message);
     if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site'); }
-    
-    // 1. Capture d'écran
     await page.screenshot({ path: './Site/erreur_capture.png', fullPage: true });
-    
-    // 2. Capture du texte de la page (pour voir les messages cachés)
-    const bodyText = await page.evaluate(() => document.body.innerText);
-    fs.writeFileSync('./Site/erreur_log.txt', `URL: ${page.url()}\n\nTEXTE DE LA PAGE:\n${bodyText}`);
-    
-    console.log("📸 Preuves sauvegardées dans le dossier /Site (capture + texte).");
     process.exit(1);
   } finally {
     await browser.close();
