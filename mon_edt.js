@@ -31,7 +31,15 @@ async function autoLog(page, message) {
     step++;
 }
 
+// ... (haut du code inchangé)
+
 (async () => {
+  // Sécurité : on vérifie que les secrets sont bien chargés
+  if (!IDENTIFIANT || !MOT_DE_PASSE) {
+      console.error("❌ Erreur : IDENTIFIANT ou MOT_DE_PASSE est vide dans les secrets.");
+      process.exit(1);
+  }
+
   const browser = await puppeteer.launch({ 
     headless: "new", 
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
@@ -48,14 +56,25 @@ async function autoLog(page, message) {
     await page.waitForSelector('#username', { timeout: 10000 });
     
     console.log("⌨️ Saisie des identifiants...");
-    await page.type('#username', IDENTIFIANT, { delay: 50 });
-    await page.type('#password', MOT_DE_PASSE, { delay: 50 });
+    // On clique pour être sûr que le curseur est au bon endroit
+    await page.click('#username');
+    await page.type('#username', IDENTIFIANT, { delay: 100 });
+    
+    await page.click('#password');
+    await page.type('#password', MOT_DE_PASSE, { delay: 100 });
+    
     await autoLog(page, "Identifiants saisis");
 
     console.log("🖱️ Clic sur Connexion...");
-    await page.click('#connexion');
-    await new Promise(r => setTimeout(r, 6000));
+    // On utilise une promesse pour attendre soit la navigation, soit l'apparition d'une erreur
+    await Promise.all([
+        page.click('#connexion'),
+        new Promise(r => setTimeout(r, 6000))
+    ]);
+    
     await autoLog(page, "Apres clic connexion");
+
+    // Suite du code (Double Auth / EDT) ...
 
     // Vérification de la situation
     const securityCheck = await page.$('.modal-content, input[type="radio"]'); 
