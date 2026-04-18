@@ -2,10 +2,8 @@ name: Mise à jour KlassDirect
 
 on:
   schedule:
-    # Tous les jeudis à 14h01
+    - cron: '48 11 * * 2,5,4,3'
     - cron: '1 14 * * 4'
-    # Tous les mardis et vendredis à 11h48
-    - cron: '48 11 * * 2,5'
   workflow_dispatch:     # Permet de le lancer manuellement
 
 jobs:
