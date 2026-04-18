@@ -567,55 +567,43 @@
         let lastDataString = '';
 
         // Fonction pour charger les données JSON
-        async function loadData(isPolling = false) {
-            try {
-                const response = await fetch('./data_edt.json', { cache: 'no-store' });
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const text = await response.text();
-                
-                // Actualiser uniquement si les données ont changé
-                if (text !== lastDataString) {
-                    lastDataString = text;
-                    data = JSON.parse(text);
-                    
-                    if (data.length > 0) {
-                        // On définit "Aujourd'hui" comme le premier jour disponible
-                        MOCK_TODAY = data[0].jour;
-                        
-                        // Calcul dynamique des heures
-                        const startHours = data.filter(c => c.debut).map(c => parseInt(c.debut.split(':')[0], 10));
-                        const endHours = data.filter(c => c.fin).map(c => {
-                            const parts = c.fin.split(':');
-                            return parseInt(parts[0], 10) + (parseInt(parts[1], 10) > 0 ? 1 : 0);
-                        });
-                        
-                        if (startHours.length > 0) {
-                            START_HOUR = Math.floor(Math.min(...startHours));
-                        }
-                        if (endHours.length > 0) {
-                            END_HOUR = Math.ceil(Math.max(...endHours));
-                        }
-                    } else if (!isPolling) {
-                        console.warn("Le fichier data_edt.json est vide.");
-                    }
-                    
-                    // Rendu initial ou mise à jour
-                    render();
-                }
-            } catch (error) {
-                if (!isPolling) {
-                    console.error("Erreur lors du chargement du fichier data_edt.json:", error);
-                    document.getElementById('app-content').innerHTML = `
-                        <div style="padding: 20px; color: var(--text-muted); text-align: center;">
-                            <p>Impossible de charger l'emploi du temps.</p>
-                            <p style="font-size: 0.9em; margin-top: 10px;">Assurez-vous que le fichier <code>data_edt.json</code> est bien présent dans le même dossier que <code>index.html</code>.</p>
-                        </div>
-                    `;
-                }
-            }
+        async function loadData(isSilent = false) {
+    const loadingState = document.getElementById('loading-state');
+    const noData = document.getElementById('no-data');
+
+    if (!isSilent && loadingState) {
+        loadingState.style.display = 'flex';
+    }
+    if (noData) {
+        noData.style.display = 'none';
+    }
+
+    try {
+        const response = await fetch('data_edt.json');
+        
+        if (!response.ok) {
+            throw new Error(`Erreur HTTP: ${response.status}`);
         }
+
+        const data = await response.json();
+        
+        if (!data || data.length === 0) {
+            if (noData) noData.style.display = 'flex';
+            return;
+        }
+
+        allCourses = data;
+        render();
+        if (noData) noData.style.display = 'none';
+    } catch (error) {
+        console.error("Erreur de chargement des données:", error);
+        if (noData) noData.style.display = 'flex';
+    } finally {
+        if (!isSilent && loadingState) {
+            loadingState.style.display = 'none';
+        }
+    }
+}
 
         let currentView = window.innerWidth < 900 ? 'list' : 'week';
 
