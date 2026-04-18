@@ -27,8 +27,37 @@ jobs:
           MOT_DE_PASSE: ${{ secrets.MOT_DE_PASSE }}
           ED_REPONSES: ${{ secrets.ED_REPONSES }}
         run: node mon_edt.js
-
-       - name: Upload Screenshots
+      - name: Save data (Success or Failure)
+        if: always() # IMPORTANT : s'exécute même si le script node a crashé
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshots
+          path: Site/
+      - name: Upload Screenshots
+        if: always() # Obligatoire pour avoir les photos même si ça plante
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-debug
+          path: Site/*.png
+      - name: Récupérer les captures d'écran
+        if: always() # S'exécute même si le script a planté
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-images
+          path: Site/*.png
+      - name: Upload Debug Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-ecole-directe
+          path: Site/*.png
+      - name: Recuperer les captures
+        if: always() # Obligatoire pour avoir les photos même en cas d'erreur
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-debug
+          path: Site/*.png
+      - name: Upload Screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
