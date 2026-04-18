@@ -29,8 +29,8 @@ jobs:
         run: node mon_edt.js
 
       - name: Save data (Success or Failure)
-      if: always() # IMPORTANT : s'exécute même si le script node a crashé
-      uses: actions/upload-artifact@v4
-      with:
-        name: debug-screenshots
-        path: Site/
+        if: always() # IMPORTANT : s'exécute même si le script node a crashé
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshots
+          path: Site/
