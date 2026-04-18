@@ -20,136 +20,94 @@ if (!fs.existsSync(DIR)) { fs.mkdirSync(DIR, { recursive: true }); }
 
 let step = 1;
 
-// Fonction pour simuler une pause humaine aléatoire
-const pauseHumaine = (min = 1000, max = 3000) => 
-    new Promise(r => setTimeout(r, Math.floor(Math.random() * (max - min + 1) + min)));
+// Simulation d'attente humaine variable
+const pause = (ms) => new Promise(r => setTimeout(r, ms + Math.random() * 1000));
 
 async function autoLog(page, message) {
-    const info = await page.evaluate(() => ({
-        url: window.location.href,
-        text: document.body.innerText.substring(0, 300).replace(/\n/g, ' | ')
-    }));
     const fileName = `${step.toString().padStart(2, '0')}_${message.replace(/\s+/g, '_').toLowerCase()}.png`;
     try { await page.screenshot({ path: `${DIR}/${fileName}`, fullPage: true }); } catch (e) {}
-    console.log(`\n[ÉTAPE ${step}] 📸 ${message.toUpperCase()}`);
+    console.log(`[ÉTAPE ${step}] 📸 ${message.toUpperCase()}`);
     step++;
 }
 
 (async () => {
+  // On ajoute un 'slowMo' global pour ralentir chaque action du navigateur
   const browser = await puppeteer.launch({ 
-    headless: "new", 
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
+    headless: "new",
+    slowMo: 50, 
+    args: ['--no-sandbox', '--disable-setuid-sandbox'] 
   }); 
 
   const page = await browser.newPage();
-  await page.setViewport({ width: 1600, height: 900 });
+  // User-Agent réaliste pour éviter d'être marqué comme robot
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  await page.setViewport({ width: 1400, height: 900 });
 
   try {
-    console.log("🌐 DÉMARRAGE DU PROCESSUS D'EXTRACTION...");
-
+    console.log("🌐 DÉMARRAGE...");
     await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
     
-    // Simulation saisie humaine
-    await pauseHumaine(1500, 3000);
-    await page.evaluate((id, mdp) => {
-        const u = document.querySelector('#username');
-        const p = document.querySelector('#password');
-        if (u && p) {
-            u.value = id; u.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-    }, IDENTIFIANT);
-    await pauseHumaine(500, 1500);
-    await page.evaluate((mdp) => {
-        const p = document.querySelector('#password');
-        if (p) {
-            p.value = mdp; p.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-    }, MOT_DE_PASSE);
-
-    await autoLog(page, "Saisie identifiants");
-    await pauseHumaine(800, 2000);
-    await page.click('#connexion');
+    // Saisie humaine lente
+    await pause(2000);
+    await page.type('#username', IDENTIFIANT, { delay: 150 });
+    await pause(1000);
+    await page.type('#password', MOT_DE_PASSE, { delay: 150 });
     
-    await new Promise(r => setTimeout(r, 6000));
+    await autoLog(page, "Saisie_Identifiants");
+    await page.click('#connexion');
+    await pause(5000);
 
-    // --- ÉTAPE 2 : GESTION DES QUESTIONS (LOGIQUE HUMAINE & FENÊTRE DU HAUT) ---
-    let loopCount = 0;
-    let enAttenteSecurite = true;
-
-    while (enAttenteSecurite && loopCount < 5) {
+    // --- BOUCLE DE SÉCURITÉ ---
+    let loop = 0;
+    while (loop < 5) {
         const check = await page.evaluate(() => {
             const modals = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content'));
-            const isVisible = modals.length > 0;
-            const question = modals.pop()?.querySelector('h3.mt-0')?.innerText || "";
-            return { isVisible, question };
+            return { isVisible: modals.length > 0, count: modals.length };
         });
 
-        if (check.isVisible) {
-            loopCount++;
-            console.log(`🛡️ Question détectée (${loopCount}) : "${check.question}"`);
+        if (!check.isVisible) break;
+        loop++;
+
+        console.log(`🛡️ Sécurité détectée (Niveau ${check.count})...`);
+        await pause(3000); // Temps de "lecture" de la question
+
+        await page.evaluate((reps) => {
+            const currentModal = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content')).pop();
+            const labels = Array.from(currentModal.querySelectorAll('label'));
             
-            // Temps de lecture de la question
-            await pauseHumaine(2000, 4000); 
-            await autoLog(page, `Securite_Question_${loopCount}`);
-
-            const success = await page.evaluate((reps) => {
-                // On cible uniquement la fenêtre tout en haut de la pile
-                const modals = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content'));
-                const topModal = modals.pop();
-                if (!topModal) return false;
-
-                const labels = Array.from(topModal.querySelectorAll('label'));
-                let found = false;
-                
-                for (let r of reps) {
-                    const search = r.toLowerCase();
-                    const target = labels.find(el => el.innerText.trim().toLowerCase() === search);
-                    
-                    if (target) {
-                        target.click();
-                        const input = document.getElementById(target.getAttribute('for'));
-                        if (input) {
-                            input.checked = true;
-                            input.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                        found = true;
-                        break;
-                    }
+            for (let r of reps) {
+                const target = labels.find(el => el.innerText.trim().toLowerCase() === r.toLowerCase());
+                if (target) {
+                    target.click(); // Clic sur le texte
+                    return true;
                 }
-
-                if (found) {
-                    const btn = topModal.querySelector('button[type="submit"]');
-                    if (btn) {
-                        btn.removeAttribute('disabled');
-                        // On clique après un court délai simulé par le script
-                        setTimeout(() => btn.click(), 800);
-                    }
-                }
-                return found;
-            }, RÉPONSES_SÉCURITÉ);
-
-            if (success) {
-                console.log("📤 Réponse envoyée...");
-                await new Promise(r => setTimeout(r, 7000)); 
-            } else {
-                console.log("⚠️ Aucune réponse correspondante.");
-                break; 
             }
-        } else {
-            console.log("✅ Accès libéré.");
-            enAttenteSecurite = false;
+            return false;
+        }, RÉPONSES_SÉCURITÉ);
+
+        await pause(1500);
+        
+        // Validation via un clic de souris réel sur le bouton de la fenêtre du haut
+        const buttonHandle = await page.evaluateHandle(() => {
+            const modals = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content'));
+            return modals.pop()?.querySelector('button[type="submit"]');
+        });
+
+        if (buttonHandle) {
+            await buttonHandle.click();
+            console.log("📤 Validation envoyée.");
         }
+
+        await pause(6000); // Attente de traitement serveur
     }
 
-    // --- ÉTAPE 3 : NAVIGATION ---
+    // --- NAVIGATION EDT ---
     console.log("🚀 Navigation vers l'EDT...");
-    await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { 
-        waitUntil: 'networkidle0',
-        timeout: 60000 
-    });
+    // On utilise la navigation par clic si possible, ou goto avec un délai
+    await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle0' });
     
-    await pauseHumaine(3000, 5000);
-    await autoLog(page, "Page EDT finale");
+    await pause(6000);
+    await autoLog(page, "Page_EDT_Finale");
 
     const cours = await page.evaluate(() => {
         return Array.from(document.querySelectorAll('.dhx_cal_event')).map(e => ({
@@ -159,17 +117,15 @@ async function autoLog(page, message) {
     });
 
     if (cours.length > 0) {
-        console.log(`✅ SUCCÈS : ${cours.length} cours trouvés.`);
+        console.log(`✅ SUCCÈS : ${cours.length} cours récupérés.`);
         fs.writeFileSync(`${DIR}/data_edt.json`, JSON.stringify(cours, null, 2));
     } else {
-        console.log("❌ ÉCHEC : Aucun cours trouvé.");
+        console.log("❌ ÉCHEC : Aucun cours. Vérifiez la capture 02.");
     }
 
   } catch (err) {
     console.error(`💥 ERREUR : ${err.message}`);
-    process.exit(1);
   } finally {
     await browser.close();
-    console.log("🏁 Navigateur fermé.");
   }
 })();
