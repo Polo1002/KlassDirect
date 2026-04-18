@@ -117,9 +117,23 @@ async function takeScreenshot(page, name) {
     fs.writeFileSync('./Site/data_edt.json', JSON.stringify(resultats, null, 2));
     console.log(`✅ SUCCÈS : ${resultats.length} cours récupérés !`);
 
-  } catch (err) {
-    console.error("💥 ERREUR :", err.message);
-    await takeScreenshot(page, 'erreur_fatale');
+} catch (err) {
+    console.error("💥 ERREUR FATALE :", err.message);
+    
+    // On crée le dossier s'il n'existe pas
+    if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site', { recursive: true }); }
+    
+    // On écrit l'erreur dans un fichier texte pour être sûr
+    fs.writeFileSync('./Site/debug_log.txt', `Erreur: ${err.message}\nDate: ${new Date().toISOString()}`);
+    
+    // On force la capture d'écran
+    try {
+        await page.screenshot({ path: './Site/erreur_fatale.png', fullPage: true });
+        console.log("📸 Capture 'erreur_fatale.png' effectuée.");
+    } catch (screenshotError) {
+        console.error("Impossible de prendre la capture :", screenshotError.message);
+    }
+    
     process.exit(1);
   } finally {
     await browser.close();
