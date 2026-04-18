@@ -24,36 +24,27 @@ if (fs.existsSync('./config.js')) {
   await page.setViewport({ width: 1280, height: 800 });
 
   try {
-    console.log("🌐 Navigation vers EcoleDirecte...");
+    console.log("🌐 Connexion à EcoleDirecte...");
     await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
 
-    console.log("⏳ Attente du formulaire Angular...");
-    // On utilise les IDs que tu m'as donnés dans le HTML
-    await page.waitForSelector('#username', { timeout: 30000 });
-    await page.waitForSelector('#password', { timeout: 10000 });
-
-    console.log("💉 Injection des identifiants...");
+    await page.waitForSelector('#username', { timeout: 20000 });
     await page.evaluate((id, pwd) => {
-        const u = document.getElementById('username');
-        const p = document.getElementById('password');
-        u.value = id;
-        p.value = pwd;
-        // On force Angular à détecter le changement
-        u.dispatchEvent(new Event('input', { bubbles: true }));
-        p.dispatchEvent(new Event('input', { bubbles: true }));
-        u.dispatchEvent(new Event('change', { bubbles: true }));
+        document.getElementById('username').value = id;
+        document.getElementById('password').value = pwd;
+        document.getElementById('username').dispatchEvent(new Event('input', { bubbles: true }));
+        document.getElementById('password').dispatchEvent(new Event('input', { bubbles: true }));
     }, IDENTIFIANT, MOT_DE_PASSE);
 
-    await new Promise(r => setTimeout(r, 1000));
-    console.log("🖱️ Clic sur le bouton #connexion...");
     await page.click('#connexion');
-
-    // Attente de sécurité (questions)
+    
+    // Attente du chargement après login
     await new Promise(r => setTimeout(r, 5000));
+
+    // Gestion de la sécurité si présente
     try {
-        const hasModal = await page.$('.modal-content');
-        if (hasModal) {
-            console.log("🛡️ Passage de la sécurité...");
+        const modal = await page.$('.modal-content');
+        if (modal) {
+            console.log("🛡️ Réponse à la question de sécurité...");
             await page.evaluate((reps) => {
                 const labels = Array.from(document.querySelectorAll('label'));
                 for (let r of reps) {
@@ -66,10 +57,12 @@ if (fs.existsSync('./config.js')) {
         }
     } catch (e) {}
 
-    console.log("🚀 Direction l'EDT...");
-    await page.goto('https://www.ecoledirecte.com/Eleve/EmploiDuTemps', { waitUntil: 'networkidle2' });
+    // ON UTILISE TON ID TROUVÉ DANS LE MENU (10042)
+    console.log("🚀 Navigation vers l'EDT de Paul...");
+    await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle2' });
     
-    await page.waitForSelector('.dhx_cal_event', { timeout: 20000 });
+    console.log("⏳ Attente des cours...");
+    await page.waitForSelector('.dhx_cal_event', { timeout: 30000 });
 
     const resultats = await page.evaluate(() => {
         const joursElements = Array.from(document.querySelectorAll('.dhx_scale_bar'));
@@ -78,6 +71,7 @@ if (fs.existsSync('./config.js')) {
             left: el.getBoundingClientRect().left, 
             right: el.getBoundingClientRect().right 
         }));
+        
         const events = Array.from(document.querySelectorAll('.dhx_cal_event'));
         return events.map(event => {
             const rect = event.getBoundingClientRect();
@@ -85,6 +79,7 @@ if (fs.existsSync('./config.js')) {
             const jourMatch = colonnes.find(col => centre >= col.left && centre <= col.right);
             const header = event.querySelector('.edt-cours-header');
             const matchHeure = (header?.innerText || "").match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+            
             return {
                 jour: jourMatch ? jourMatch.nom : "Inconnu",
                 debut: matchHeure ? matchHeure[1] : "",
@@ -100,7 +95,7 @@ if (fs.existsSync('./config.js')) {
 
     if (!fs.existsSync('./Site')) { fs.mkdirSync('./Site'); }
     fs.writeFileSync('./Site/data_edt.json', JSON.stringify(resultats, null, 2));
-    console.log("✅ SUCCÈS !");
+    console.log(`✅ TERMINÉ : ${resultats.length} cours récupérés.`);
 
   } catch (err) {
     console.error("💥 ERREUR :", err.message);
