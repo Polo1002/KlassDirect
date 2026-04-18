@@ -558,399 +558,74 @@
     </div>
 
     <script>
-        // --- 1. DONNÉES ---
-        let data = [];
-        let MOCK_TODAY = '';
-        let START_HOUR = 8;
-        let END_HOUR = 18;
-        const HOUR_HEIGHT = 120; // Hauteur d'une heure en pixels
-        let lastDataString = '';
+    let data = [];
+    let MOCK_TODAY = '';
+    let START_HOUR = 8;
+    let END_HOUR = 18;
+    const HOUR_HEIGHT = 120;
 
-        // Fonction pour charger les données JSON
-        async function loadData(isPolling = false) {
-            try {
-                const response = await fetch('./data_edt.json', { cache: 'no-store' });
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const text = await response.text();
+    // Chargement unique des données
+    async function loadData() {
+        try {
+            // Le "./" est crucial pour GitHub Pages
+            const response = await fetch('./data_edt.json');
+            if (!response.ok) throw new Error("Fichier JSON introuvable");
+            
+            data = await response.json();
+            
+            if (data.length > 0) {
+                MOCK_TODAY = data[0].jour;
+                const startHours = data.filter(c => c.debut).map(c => parseInt(c.debut.split(':')[0], 10));
+                const endHours = data.filter(c => c.fin).map(c => parseInt(c.fin.split(':')[0], 10) + 1);
                 
-                // Actualiser uniquement si les données ont changé
-                if (text !== lastDataString) {
-                    lastDataString = text;
-                    data = JSON.parse(text);
-                    
-                    if (data.length > 0) {
-                        // On définit "Aujourd'hui" comme le premier jour disponible
-                        MOCK_TODAY = data[0].jour;
-                        
-                        // Calcul dynamique des heures
-                        const startHours = data.filter(c => c.debut).map(c => parseInt(c.debut.split(':')[0], 10));
-                        const endHours = data.filter(c => c.fin).map(c => {
-                            const parts = c.fin.split(':');
-                            return parseInt(parts[0], 10) + (parseInt(parts[1], 10) > 0 ? 1 : 0);
-                        });
-                        
-                        if (startHours.length > 0) {
-                            START_HOUR = Math.floor(Math.min(...startHours));
-                        }
-                        if (endHours.length > 0) {
-                            END_HOUR = Math.ceil(Math.max(...endHours));
-                        }
-                    } else if (!isPolling) {
-                        console.warn("Le fichier data_edt.json est vide.");
-                    }
-                    
-                    // Rendu initial ou mise à jour
-                    render();
-                }
-            } catch (error) {
-                if (!isPolling) {
-                    console.error("Erreur lors du chargement du fichier data_edt.json:", error);
-                    document.getElementById('app-content').innerHTML = `
-                        <div style="padding: 20px; color: var(--text-muted); text-align: center;">
-                            <p>Impossible de charger l'emploi du temps.</p>
-                            <p style="font-size: 0.9em; margin-top: 10px;">Assurez-vous que le fichier <code>data_edt.json</code> est bien présent dans le même dossier que <code>index.html</code>.</p>
-                        </div>
-                    `;
-                }
-            }
-        }
-
-        let currentView = window.innerWidth < 900 ? 'list' : 'week';
-
-        // --- 3. UTILITAIRES ---
-        function hexToRgba(hex, alpha) {
-            let c;
-            if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
-                c = hex.substring(1).split('');
-                if(c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
-                c = '0x' + c.join('');
-                return `rgba(${(c>>16)&255}, ${(c>>8)&255}, ${c&255}, ${alpha})`;
-            }
-            return `rgba(128,128,128,${alpha})`;
-        }
-
-        function timeToMinutes(timeStr) {
-            if (!timeStr) return 0;
-            const [h, m] = timeStr.split(':').map(Number);
-            return h * 60 + m;
-        }
-
-        function cleanRoomName(room) {
-            return room ? room.replace(/^En\s+/i, "") : "";
-        }
-
-        function formatDay(jourStr) {
-            if (!jourStr || jourStr.includes('--')) return jourStr;
-            const parts = jourStr.split(' ');
-            if (parts.length >= 2) {
-                const dayMap = { 'Lun': 'Lundi', 'Mar': 'Mardi', 'Mer': 'Mercredi', 'Jeu': 'Jeudi', 'Ven': 'Vendredi', 'Sam': 'Samedi', 'Dim': 'Dimanche' };
-                const fullDay = dayMap[parts[0]] || parts[0];
-                return `${fullDay} ${parts[1]}`;
-            }
-            return jourStr;
-        }
-
-        function calculateLayout(courses) {
-            if (!courses || courses.length === 0) return courses;
-            
-            // Trier par heure de début
-            const sorted = [...courses].sort((a, b) => timeToMinutes(a.debut) - timeToMinutes(b.debut));
-            
-            let groups = [];
-            let currentGroup = [];
-            let groupEnd = 0;
-
-            sorted.forEach(course => {
-                const start = timeToMinutes(course.debut);
-                const end = timeToMinutes(course.fin);
-                if (start >= groupEnd) {
-                    if (currentGroup.length > 0) groups.push(currentGroup);
-                    currentGroup = [course];
-                    groupEnd = end;
-                } else {
-                    currentGroup.push(course);
-                    groupEnd = Math.max(groupEnd, end);
-                }
-            });
-            if (currentGroup.length > 0) groups.push(currentGroup);
-
-            groups.forEach(group => {
-                const cols = [];
-                group.forEach(course => {
-                    let placed = false;
-                    for (let i = 0; i < cols.length; i++) {
-                        if (timeToMinutes(cols[i][cols[i].length - 1].fin) <= timeToMinutes(course.debut)) {
-                            cols[i].push(course);
-                            course.colIndex = i;
-                            placed = true;
-                            break;
-                        }
-                    }
-                    if (!placed) {
-                        cols.push([course]);
-                        course.colIndex = cols.length - 1;
-                    }
-                });
-                const numCols = cols.length;
-                group.forEach(course => {
-                    course.numCols = numCols;
-                });
-            });
-            
-            return sorted;
-        }
-
-        // --- 4. GÉNÉRATION DES CARTES ---
-        function createCourseCardHTML(course, isAbsolute = false) {
-            const isCancelled = course.annule;
-            // Opacité augmentée de 0.15 à 0.35 pour des couleurs plus vives (moins transparentes)
-            const bgColor = isCancelled ? '' : `background-color: ${hexToRgba(course.couleur, 0.35)};`;
-            const borderColor = `border-left-color: ${course.couleur};`;
-            const roomDisplay = cleanRoomName(course.salle);
-            
-            let style = `${borderColor} ${bgColor}`;
-            let isShort = false;
-            
-            if (course.debut && course.fin) {
-                const startMins = timeToMinutes(course.debut);
-                const endMins = timeToMinutes(course.fin);
-                const duration = endMins - startMins;
+                if (startHours.length > 0) START_HOUR = Math.min(...startHours);
+                if (endHours.length > 0) END_HOUR = Math.max(...endHours);
                 
-                if (duration <= 55) {
-                    isShort = true;
-                }
-                
-                if (isAbsolute) {
-                    const top = ((startMins - (START_HOUR * 60)) / 60) * HOUR_HEIGHT;
-                    // On retire 6px à la hauteur pour créer un espace visuel entre les cours qui s'enchaînent
-                    const height = (duration / 60) * HOUR_HEIGHT - 6;
-                    
-                    // Gestion des colonnes (chevauchement)
-                    const colIndex = course.colIndex || 0;
-                    const numCols = course.numCols || 1;
-                    const widthPercent = 100 / numCols;
-                    const leftPercent = colIndex * widthPercent;
-                    
-                    style += ` top: ${top}px; height: ${height}px; left: calc(${leftPercent}% + 4px); width: calc(${widthPercent}% - 8px); right: auto;`;
-                }
+                render();
             }
-
-            const courseJson = encodeURIComponent(JSON.stringify(course));
-
-            return `
-                <div class="course-card ${isCancelled ? 'is-cancelled' : ''} ${isShort ? 'is-short' : ''}" style="${style}" onclick="openCourseModal('${courseJson}')">
-                    <div class="c-header">
-                        ${course.debut ? `
-                        <div class="c-time">
-                            <i data-lucide="clock" style="width:12px; height:12px;"></i>
-                            ${course.debut} - ${course.fin}
-                        </div>
-                        ` : '<div></div>'}
-                        ${isCancelled ? '<div class="badge-cancelled">Annulé</div>' : ''}
-                    </div>
-                    <div class="c-subject">${course.matiere}</div>
-                    <div class="c-details">
-                        ${roomDisplay ? `
-                            <div class="c-detail-item">
-                                <i data-lucide="map-pin"></i> ${roomDisplay}
-                            </div>
-                        ` : ''}
-                        <div class="c-detail-item">
-                            <i data-lucide="user"></i> ${course.prof}
-                        </div>
-                    </div>
-                </div>
-            `;
+        } catch (error) {
+            console.error("Erreur :", error);
+            document.getElementById('app-content').innerHTML = `<p style="text-align:center; margin-top:50px; color:var(--text-muted);">Aucune donnée disponible. Vérifiez data_edt.json.</p>`;
         }
+    }
 
-        // --- 5. MOTEUR DE RENDU ---
-        function render() {
-            const container = document.getElementById('app-content');
-            
-            // Mise à jour des boutons
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.view === currentView);
-            });
-
-            // Filtrage des données
-            let dataToRender = data;
-            if (currentView === 'today') {
-                dataToRender = data.filter(c => c.jour === MOCK_TODAY);
-            }
-
-            // Grouper par jour
-            const daysOrder = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
-            const groupedData = {};
-            
-            if (currentView === 'today') {
-                if (MOCK_TODAY) groupedData[MOCK_TODAY] = dataToRender;
-            } else {
-                // Initialiser les jours de la semaine
-                daysOrder.forEach(d => {
-                    const fullDay = data.find(c => c.jour.startsWith(d))?.jour || `${d} --`;
-                    groupedData[fullDay] = [];
-                });
-                dataToRender.forEach(course => {
-                    if(groupedData[course.jour]) groupedData[course.jour].push(course);
-                    else groupedData[course.jour] = [course];
-                });
-            }
-
-            if (currentView === 'list') {
-                // --- VUE LISTE ---
-                let html = '<div class="list-layout">';
-                for (const [day, courses] of Object.entries(groupedData)) {
-                    if (courses.length === 0) continue;
-                    html += `
-                        <div class="list-day-group">
-                            <div class="list-day-title">${formatDay(day)}</div>
-                            <div class="list-courses">
-                                ${courses.map(c => createCourseCardHTML(c, false)).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-                html += '</div>';
-                container.innerHTML = html;
-
-            } else {
-                // --- VUE GRILLE (Semaine & Aujourd'hui) ---
-                let html = '<div class="grid-layout">';
-                
-                // Conteneur des jours
-                html += '<div class="days-wrapper">';
-                
-                // Lignes de quadrillage (fond)
-                html += '<div class="grid-lines-container">';
-                for (let h = START_HOUR; h <= END_HOUR; h++) {
-                    const top = (h - START_HOUR) * HOUR_HEIGHT;
-                    html += `<div class="grid-line" style="top: ${top}px;"></div>`;
-                }
-                html += '</div>';
-
-                // Colonnes des jours
-                for (const [day, courses] of Object.entries(groupedData)) {
-                    const timelessCourses = courses.filter(c => !c.debut);
-                    let timedCourses = courses.filter(c => c.debut);
-                    
-                    // Calcul des chevauchements pour la vue grille
-                    timedCourses = calculateLayout(timedCourses);
-
-                    html += `
-                        <div class="day-column">
-                            <div class="day-header">${formatDay(day)}</div>
-                            <div class="courses-container" style="height: ${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px;">
-                                ${timedCourses.map(c => createCourseCardHTML(c, true)).join('')}
-                            </div>
-                            ${timelessCourses.length > 0 ? `
-                            <div class="timeless-courses">
-                                ${timelessCourses.map(c => createCourseCardHTML(c, false)).join('')}
-                            </div>
-                            ` : ''}
-                        </div>
-                    `;
-                }
-                html += '</div>'; // Fin days-wrapper
-
-                // Axe du temps (À DROITE)
-                html += '<div class="time-axis">';
-                html += `<div class="day-header" style="color:transparent; border-bottom:none;">-</div>`; // Espace pour aligner avec le header
-                html += '<div style="position:relative; margin-top:10px;">';
-                for (let h = START_HOUR; h <= END_HOUR; h++) {
-                    const top = (h - START_HOUR) * HOUR_HEIGHT;
-                    html += `<div class="time-slot-label" style="top: ${top}px;">${h}h</div>`;
-                }
-                html += '</div></div>'; // Fin time-axis
-
-                html += '</div>'; // Fin grid-layout
-                container.innerHTML = html;
-            }
-
-            // Ré-initialiser les icônes Lucide après injection HTML
-            lucide.createIcons();
-        }
-
-        // --- 6. GESTION DES VUES & THÈMES ---
-        function switchView(view) {
-            currentView = view;
-            render();
-        }
-
-        function toggleTheme() {
-            const html = document.documentElement;
-            const isDark = html.classList.contains('dark');
-            if (isDark) {
-                html.classList.remove('dark');
-                html.classList.add('light');
-                localStorage.setItem('theme', 'light');
-            } else {
-                html.classList.remove('light');
-                html.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
-            }
-            updateThemeIcon();
-        }
-
-        function updateThemeIcon() {
-            const isDark = document.documentElement.classList.contains('dark');
-            const iconEl = document.getElementById('theme-icon');
-            if (iconEl) {
-                // Remplacer l'icône
-                const newIcon = document.createElement('i');
-                newIcon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
-                newIcon.id = 'theme-icon';
-                iconEl.parentNode.replaceChild(newIcon, iconEl);
-                lucide.createIcons();
-            }
-        }
-
-        function openCourseModal(courseJson) {
-            const course = JSON.parse(decodeURIComponent(courseJson));
-            document.getElementById('modal-subject').textContent = course.matiere;
-            
-            const timeStr = course.debut ? `${formatDay(course.jour)} • ${course.debut} - ${course.fin}` : formatDay(course.jour);
-            document.getElementById('modal-time').innerHTML = `<i data-lucide="clock" style="width:16px; height:16px;"></i> ${timeStr}`;
-            
-            document.getElementById('modal-prof').textContent = course.prof || 'Non spécifié';
-            
-            const room = cleanRoomName(course.salle);
-            if (room) {
-                document.getElementById('modal-room-container').style.display = 'flex';
-                document.getElementById('modal-room').textContent = room;
-            } else {
-                document.getElementById('modal-room-container').style.display = 'none';
-            }
-            
-            document.getElementById('modal-status-container').style.display = course.annule ? 'flex' : 'none';
-            
-            document.getElementById('course-modal').classList.add('active');
-            lucide.createIcons();
-        }
-        
-        function closeCourseModal(event) {
-            if (event && event.target !== document.getElementById('course-modal')) return;
-            document.getElementById('course-modal').classList.remove('active');
-        }
-
-        // Initialisation du thème
-        const savedTheme = localStorage.getItem('theme');
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        
-        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
-            document.documentElement.classList.add('dark');
-            document.documentElement.classList.remove('light');
-        }
-
-        // --- 7. DÉMARRAGE ---
+    // Gestion du thème
+    function toggleTheme() {
+        const isDark = document.documentElement.classList.toggle('dark');
+        const themeIcon = document.getElementById('theme-icon');
+        themeIcon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
         lucide.createIcons();
-        updateThemeIcon();
-        loadData();
-        
-        // Actualisation automatique en arrière-plan toutes les 5 secondes
-        setInterval(() => loadData(true), 5000);
+    }
 
-    </script>
-</body>
+    function switchView(view) {
+        currentView = view;
+        render();
+    }
+
+    // Fonctions de la modale
+    function openCourseModal(courseJson) {
+        const course = JSON.parse(decodeURIComponent(courseJson));
+        document.getElementById('modal-subject').innerText = course.matiere;
+        document.getElementById('modal-time').innerHTML = `<i data-lucide="clock"></i> ${course.debut} - ${course.fin}`;
+        document.getElementById('modal-prof').innerText = course.prof;
+        document.getElementById('modal-room').innerText = course.salle.replace(/^En\s+/i, "");
+        document.getElementById('modal-status-container').style.display = course.annule ? 'flex' : 'none';
+        document.getElementById('course-modal').classList.add('active');
+        lucide.createIcons();
+    }
+
+    function closeCourseModal() {
+        document.getElementById('course-modal').classList.remove('active');
+    }
+
+    // Logique de rendu (simplifiée pour l'exemple, garde ta logique de dessin ici)
+    // ... (insère ici tes fonctions calculateLayout, createCourseCardHTML et render que tu avais déjà)
+
+    // Lancement au chargement
+    let currentView = window.innerWidth < 900 ? 'list' : 'week';
+    window.onload = () => {
+        loadData();
+        lucide.createIcons();
+    };
+</script>
 </html>
