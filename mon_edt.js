@@ -10,10 +10,11 @@ if (fs.existsSync('./config.js')) {
     RÉPONSES_SÉCURITÉ = config.RÉPONSES_SÉCURITÉ;
 } else {
     IDENTIFIANT = process.env.ED_IDENTIFIANT;
-    // CHANGE CETTE LIGNE CI-DESSOUS pour correspondre à ton secret GitHub
+    // Utilisation du nom exact de ton secret GitHub
     MOT_DE_PASSE = process.env.MOT_DE_PASSE; 
     RÉPONSES_SÉCURITÉ = process.env.ED_REPONSES ? process.env.ED_REPONSES.split(',') : [];
 }
+
 // Configuration du dossier de sortie
 const DIR = './Site';
 if (!fs.existsSync(DIR)) { fs.mkdirSync(DIR, { recursive: true }); }
@@ -57,22 +58,18 @@ async function autoLog(page, message) {
     await autoLog(page, "Apres clic connexion");
 
     // Vérification de la situation
-    const securityCheck = await page.$('input[type="checkbox"]'); 
+    const securityCheck = await page.$('.modal-content, input[type="radio"]'); 
     const isStillOnLogin = await page.$('#username');
-    const isLoggedIn = await page.$('.menu-principal, #menu-top'); // Sélecteur typique après login
+    const isLoggedIn = await page.$('.menu-principal, #menu-top');
 
     if (isLoggedIn) {
         console.log("✅ Connecté avec succès !");
     } else if (securityCheck) {
-// ... (début du code)
-
-    } else if (securityCheck) {
         console.log("🛡️ Double authentification détectée...");
         await autoLog(page, "Fenetre securite apparue");
 
-        const selection Reussie = await page.evaluate((reps) => {
+        const selectionReussie = await page.evaluate((reps) => {
             const labels = Array.from(document.querySelectorAll('label, .radio label, span'));
-            // On cherche une correspondance pour chaque réponse fournie
             for (let r of reps) {
                 const target = labels.find(el => 
                     el.innerText.trim().toLowerCase() === r.trim().toLowerCase()
@@ -91,25 +88,15 @@ async function autoLog(page, message) {
 
         await autoLog(page, "Apres tentative selection");
 
-        // On clique sur le bouton "Envoyer ma réponse"
-        const submitBtn = await page.$('button.btn-primary, .modal-footer button, button[type="submit"]');
-        if (submitBtn) {
-            await submitBtn.click();
-            console.log("📤 Réponse envoyée...");
-        }
-
-        await new Promise(r => setTimeout(r, 8000)); 
-    }
-        
-        // --- CORRECTION ICI ---
+        // Validation de la réponse
         const btnSelector = 'button.btn-primary, .modal-footer button, button[type="submit"]';
         await page.waitForSelector(btnSelector, { visible: true, timeout: 5000 });
         await page.click(btnSelector);
-        // -----------------------
+        
+        console.log("📤 Validation envoyée...");
+        await new Promise(r => setTimeout(r, 8000));
+        await autoLog(page, "Apres validation securite");
 
-        await new Promise(r => setTimeout(r, 5000));
-        await autoLog(page, "Apres validation securite");
-        await autoLog(page, "Apres validation securite");
     } else if (isStillOnLogin) {
         throw new Error("Échec de connexion : Identifiants incorrects ou page bloquée.");
     }
@@ -161,7 +148,7 @@ async function autoLog(page, message) {
     console.log(`✅ SUCCÈS : ${resultats.length} cours récupérés !`);
     await autoLog(page, "Fin de processus");
 
-} catch (err) {
+  } catch (err) {
     console.error("💥 ERREUR FATALE :", err.message);
     fs.writeFileSync(`${DIR}/debug_log.txt`, `Erreur: ${err.message}\nDate: ${new Date().toISOString()}`);
     
