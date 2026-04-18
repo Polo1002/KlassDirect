@@ -10,10 +10,10 @@ if (fs.existsSync('./config.js')) {
     RÉPONSES_SÉCURITÉ = config.RÉPONSES_SÉCURITÉ;
 } else {
     IDENTIFIANT = process.env.ED_IDENTIFIANT;
-    MOT_DE_PASSE = process.env.ED_MOTDEPASSE;
+    // CHANGE CETTE LIGNE CI-DESSOUS pour correspondre à ton secret GitHub
+    MOT_DE_PASSE = process.env.MOT_DE_PASSE; 
     RÉPONSES_SÉCURITÉ = process.env.ED_REPONSES ? process.env.ED_REPONSES.split(',') : [];
 }
-
 // Configuration du dossier de sortie
 const DIR = './Site';
 if (!fs.existsSync(DIR)) { fs.mkdirSync(DIR, { recursive: true }); }
