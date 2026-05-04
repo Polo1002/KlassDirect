@@ -25,8 +25,9 @@ let step = 1;
 const pause = (ms) => new Promise(r => setTimeout(r, ms + Math.random() * 1000));
 
 async function autoLog(page, message) {
-    const fileName = `${step.toString().padStart(2, '0')}_${message.replace(/\s+/g, '_').toLowerCase()}.png`;
-    try { await page.screenshot({ path: `${DIR}/${fileName}`, fullPage: true }); } catch (e) {}
+    // On commente ou on supprime la ligne du screenshot
+    // try { await page.screenshot({ path: `${DIR}/${fileName}`, fullPage: true }); } catch (e) {}
+    
     console.log(`[ÉTAPE ${step}] 📸 ${message.toUpperCase()}`);
     step++;
 }
