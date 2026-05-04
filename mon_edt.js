@@ -15,7 +15,8 @@ if (fs.existsSync('./config.js')) {
         process.env.ED_REPONSES.split(',').map(s => s.replace(/["']/g, "").trim()) : [];
 }
 
-const DIR = './Site';
+// Changement ici : création d'un dossier "logs" au lieu de "Site" pour les captures d'écran
+const DIR = './logs';
 if (!fs.existsSync(DIR)) { fs.mkdirSync(DIR, { recursive: true }); }
 
 let step = 1;
@@ -118,8 +119,8 @@ async function autoLog(page, message) {
 
     if (cours.length > 0) {
         console.log(`✅ SUCCÈS : ${cours.length} cours récupérés.`);
-        // Par celle-ci :
-        fs.writeFileSync('./Site/data_edt.json', JSON.stringify(donneesFinales, null, 2));
+        // Changement ici : utilisation de la variable 'cours' et enregistrement à la racine
+        fs.writeFileSync('./data_edt.json', JSON.stringify(cours, null, 2));
     } else {
         console.log("❌ ÉCHEC : Aucun cours. Vérifiez la capture 02.");
     }
@@ -130,20 +131,3 @@ async function autoLog(page, message) {
     await browser.close();
   }
 })();
-// Le code marche mais il met "Run node mon_edt.js
-
-//🌐 DÉMARRAGE...
-
-//[ÉTAPE 1] 📸 SAISIE_IDENTIFIANTS
-
-//🛡️ Sécurité détectée (Niveau 2)...
-
-//📤 Validation envoyée.
-
-//🚀 Navigation vers l'EDT...
-
-//[ÉTAPE 2] 📸 PAGE_EDT_FINALE
-
-//✅ SUCCÈS : 29 cours récupérés.
-
-//💥 ERREUR : donneesFinales is not defined". Aussi, je veux qu'il enregistre à la racine du projet. Dis-moi donc les changements à faire dans ce code.
