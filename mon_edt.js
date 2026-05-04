@@ -15,7 +15,6 @@ if (fs.existsSync('./config.js')) {
         process.env.ED_REPONSES.split(',').map(s => s.replace(/["']/g, "").trim()) : [];
 }
 
-// Changement ici : création d'un dossier "logs" au lieu de "Site" pour les captures d'écran
 const DIR = './logs';
 if (!fs.existsSync(DIR)) { fs.mkdirSync(DIR, { recursive: true }); }
 
@@ -25,15 +24,11 @@ let step = 1;
 const pause = (ms) => new Promise(r => setTimeout(r, ms + Math.random() * 1000));
 
 async function autoLog(page, message) {
-    // On commente ou on supprime la ligne du screenshot
-    // try { await page.screenshot({ path: `${DIR}/${fileName}`, fullPage: true }); } catch (e) {}
-    
     console.log(`[ÉTAPE ${step}] 📸 ${message.toUpperCase()}`);
     step++;
 }
 
 (async () => {
-  // On ajoute un 'slowMo' global pour ralentir chaque action du navigateur
   const browser = await puppeteer.launch({ 
     headless: "new",
     slowMo: 50, 
@@ -41,7 +36,6 @@ async function autoLog(page, message) {
   }); 
 
   const page = await browser.newPage();
-  // User-Agent réaliste pour éviter d'être marqué comme robot
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
   await page.setViewport({ width: 1400, height: 900 });
 
@@ -71,7 +65,7 @@ async function autoLog(page, message) {
         loop++;
 
         console.log(`🛡️ Sécurité détectée (Niveau ${check.count})...`);
-        await pause(3000); // Temps de "lecture" de la question
+        await pause(3000);
 
         await page.evaluate((reps) => {
             const currentModal = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content')).pop();
@@ -80,7 +74,7 @@ async function autoLog(page, message) {
             for (let r of reps) {
                 const target = labels.find(el => el.innerText.trim().toLowerCase() === r.toLowerCase());
                 if (target) {
-                    target.click(); // Clic sur le texte
+                    target.click();
                     return true;
                 }
             }
@@ -89,7 +83,6 @@ async function autoLog(page, message) {
 
         await pause(1500);
         
-        // Validation via un clic de souris réel sur le bouton de la fenêtre du haut
         const buttonHandle = await page.evaluateHandle(() => {
             const modals = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content'));
             return modals.pop()?.querySelector('button[type="submit"]');
@@ -100,30 +93,111 @@ async function autoLog(page, message) {
             console.log("📤 Validation envoyée.");
         }
 
-        await pause(6000); // Attente de traitement serveur
+        await pause(6000);
     }
 
     // --- NAVIGATION EDT ---
     console.log("🚀 Navigation vers l'EDT...");
-    // On utilise la navigation par clic si possible, ou goto avec un délai
     await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle0' });
     
     await pause(6000);
     await autoLog(page, "Page_EDT_Finale");
 
+    // --- NOUVELLE EXTRACTION CONFORME AU FORMAT ATTENDU ---
     const cours = await page.evaluate(() => {
-        return Array.from(document.querySelectorAll('.dhx_cal_event')).map(e => ({
-            matiere: e.querySelector('.edt-cours-text')?.innerText.trim(),
-            heure: e.querySelector('.dhx_event_time')?.innerText.trim()
-        }));
+        const elements = document.querySelectorAll('.dhx_cal_event');
+        const data = [];
+
+        elements.forEach(el => {
+            // 1. Extraction et conversion de la couleur
+            let bgCouleur = el.style.backgroundColor || window.getComputedStyle(el).backgroundColor;
+            if (!bgCouleur || bgCouleur === 'transparent') {
+                const body = el.querySelector('.dhx_body');
+                if (body) bgCouleur = window.getComputedStyle(body).backgroundColor;
+            }
+
+            const rgbToHex = (rgb) => {
+                if (!rgb) return "#f3f3f3";
+                const match = rgb.match(/\d+/g);
+                if (!match || match.length < 3) return "#f3f3f3";
+                return "#" + match.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+            };
+            const couleurHex = bgCouleur.includes('rgb') ? rgbToHex(bgCouleur) : bgCouleur;
+
+            // 2. Extraction des horaires
+            const heureTexte = el.querySelector('.dhx_event_time')?.innerText.trim() || "";
+            let debut = "", fin = "";
+            if (heureTexte.includes('-')) {
+                const parts = heureTexte.split('-');
+                debut = parts[0].trim();
+                fin = parts[1].trim();
+            }
+
+            // 3. Extraction du jour (depuis l'attribut aria-label ou le titre, courant sur ED)
+            let jour = "";
+            const ariaLabel = el.getAttribute('aria-label') || "";
+            if (ariaLabel.includes(',')) {
+                // Ex: "Lundi 13 avril, 08:30..." -> On tente de récupérer "Lun 13 Avr"
+                const datePart = ariaLabel.split(',')[0].trim();
+                const dateWords = datePart.split(' ');
+                if (dateWords.length >= 3) {
+                    jour = `${dateWords[0].substring(0,3)} ${dateWords[1]} ${dateWords[2].substring(0,3)}`;
+                    jour = jour.charAt(0).toUpperCase() + jour.slice(1);
+                } else {
+                    jour = datePart;
+                }
+            }
+
+            // 4. Extraction du contenu textuel intelligent (Matière, Prof, Salle)
+            const textContent = el.querySelector('.dhx_title')?.innerText.trim() || ""; 
+            const bodyContent = el.querySelector('.dhx_body')?.innerText.trim() || "";
+            const fullText = (textContent + "\n" + bodyContent).trim();
+            const lignes = fullText.split('\n').map(l => l.trim()).filter(l => l !== "");
+
+            // Initialisation avec les sélecteurs directs (s'ils existent)
+            let matiere = el.querySelector('.edt-cours-text')?.innerText.trim() || (lignes.length > 0 ? lignes[0] : "");
+            let prof = "";
+            let salle = "";
+
+            // Déduction par heuristique sur les lignes restantes
+            lignes.forEach(ligne => {
+                if (ligne === matiere || ligne === heureTexte) return;
+                
+                // Si la ligne ressemble à une salle (Ex: C203, Labo6, C3 RESEAU, GYMNASE)
+                if (ligne.match(/^[A-Z][0-9]{2,3}$/) || ligne.toLowerCase().includes('labo') || ligne.toLowerCase().includes('reseau') || ligne.toLowerCase().includes('gymnase')) {
+                    salle = ligne;
+                } 
+                // Si la ligne ressemble à un prof (Ex: BASTARDO I., M. DUPONT)
+                else if (ligne.includes('.') || ligne.startsWith('M.') || ligne.startsWith('MME')) {
+                    prof = ligne;
+                }
+            });
+
+            // 5. Statut d'annulation
+            const annule = el.classList.contains('annule') || 
+                           el.classList.contains('cours-annule') || 
+                           fullText.toLowerCase().includes('annulé');
+
+            data.push({
+                jour: jour,
+                debut: debut,
+                fin: fin,
+                matiere: matiere.toUpperCase(),
+                salle: salle,
+                prof: prof,
+                couleur: couleurHex,
+                annule: annule
+            });
+        });
+
+        return data;
     });
 
     if (cours.length > 0) {
-        console.log(`✅ SUCCÈS : ${cours.length} cours récupérés.`);
-        // Changement ici : utilisation de la variable 'cours' et enregistrement à la racine
+        console.log(`✅ SUCCÈS : ${cours.length} cours récupérés avec couleurs et professeurs.`);
         fs.writeFileSync('./data_edt.json', JSON.stringify(cours, null, 2));
     } else {
-        console.log("❌ ÉCHEC : Aucun cours. Vérifiez la capture 02.");
+        console.log("❌ ÉCHEC : Aucun cours trouvé.");
     }
 
   } catch (err) {
