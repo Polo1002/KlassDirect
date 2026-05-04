@@ -1,74 +1,242 @@
 [
   {
-    "matiere": "SC. ECONO.& SOCIALES"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "SC. ECONO.& SOCIALES",
+    "salle": "",
+    "prof": "KARST B.",
+    "couleur": "#00ccff",
+    "annule": false
   },
   {
-    "matiere": "ESPAGNOL LV2"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "ESPAGNOL LV2",
+    "salle": "",
+    "prof": "BASTARDO I.",
+    "couleur": "#ff99cc",
+    "annule": false
   },
   {
-    "matiere": "ENS. MORAL & CIVIQUE"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "ENS. MORAL & CIVIQUE",
+    "salle": "",
+    "prof": "PRAQUIN V.",
+    "couleur": "#66ccff",
+    "annule": false
   },
   {
-    "matiere": "SCIENCES VIE & TERRE"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "SCIENCES VIE & TERRE",
+    "salle": "En Labo1",
+    "prof": "GAUDEX A.",
+    "couleur": "#33cc33",
+    "annule": false
   },
   {
-    "matiere": "PHYSIQUE-CHIMIE"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "PHYSIQUE-CHIMIE",
+    "salle": "En Labo6",
+    "prof": "LE CUDONNEC M.",
+    "couleur": "#33cc33",
+    "annule": false
   },
   {
-    "matiere": "EPS OPTION"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "EPS OPTION",
+    "salle": "En GYMNASE 6",
+    "prof": "MORI J.",
+    "couleur": "#ffff66",
+    "annule": false
   },
   {
-    "matiere": "HISTOIRE-GEOGRAPHIE"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "HISTOIRE-GEOGRAPHIE",
+    "salle": "En C3 RESEAU 2, C3 RESEAU 1",
+    "prof": "PRAQUIN V.",
+    "couleur": "#66ccff",
+    "annule": false
   },
   {
-    "matiere": "MATHEMATIQUES"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "MATHEMATIQUES",
+    "salle": "",
+    "prof": "GARNIER F.",
+    "couleur": "#ffcc66",
+    "annule": false
   },
   {
-    "matiere": "MANAGEMENT & GESTION"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "MANAGEMENT & GESTION",
+    "salle": "En C3 RESEAU 2",
+    "prof": "HASSEN S.",
+    "couleur": "#3366ff",
+    "annule": false
   },
   {
-    "matiere": "HISTOIRE-GEOGRAPHIE"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "HISTOIRE-GEOGRAPHIE",
+    "salle": "",
+    "prof": "PRAQUIN V.",
+    "couleur": "#66ccff",
+    "annule": false
   },
   {
-    "matiere": "HISTOIRE-GEOGRAPHIE"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "HISTOIRE-GEOGRAPHIE",
+    "salle": "En C3 RESEAU 4, C3 RESEAU 3",
+    "prof": "PRAQUIN V.",
+    "couleur": "#66ccff",
+    "annule": false
   },
   {
-    "matiere": "MATHEMATIQUES"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "MATHEMATIQUES",
+    "salle": "",
+    "prof": "GARNIER F.",
+    "couleur": "#ffcc66",
+    "annule": false
   },
   {
-    "matiere": "SC. ECONO.& SOCIALES"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "SC. ECONO.& SOCIALES",
+    "salle": "",
+    "prof": "KARST B.",
+    "couleur": "#00ccff",
+    "annule": false
   },
   {
-    "matiere": "EPS OPTION"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "EPS OPTION",
+    "salle": "En GYMNASE 6",
+    "prof": "MORI J.",
+    "couleur": "#ffff66",
+    "annule": false
   },
   {
-    "matiere": "ESPAGNOL LV2"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "ESPAGNOL LV2",
+    "salle": "",
+    "prof": "BASTARDO I.",
+    "couleur": "#ff99cc",
+    "annule": false
   },
   {
-    "matiere": "PASTORALE"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "PASTORALE",
+    "salle": "",
+    "prof": "PASTO L.",
+    "couleur": "#a28d8d",
+    "annule": false
   },
   {
-    "matiere": "ED.PHYSIQUE & SPORT."
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "ED.PHYSIQUE & SPORT.",
+    "salle": "En GYMNASE 5",
+    "prof": "GROS E.",
+    "couleur": "#ffff66",
+    "annule": false
   },
   {
-    "matiere": "FRANCAIS"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "FRANCAIS",
+    "salle": "",
+    "prof": "KAUFF H.",
+    "couleur": "#1186fe",
+    "annule": false
   },
   {
-    "matiere": "PHYSIQUE-CHIMIE"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "PHYSIQUE-CHIMIE",
+    "salle": "",
+    "prof": "LE CUDONNEC M.",
+    "couleur": "#33cc33",
+    "annule": false
   },
   {
-    "matiere": "MATHEMATIQUES"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "MATHEMATIQUES",
+    "salle": "",
+    "prof": "GARNIER F.",
+    "couleur": "#ffcc66",
+    "annule": false
   },
   {
-    "matiere": "SC.NUMERIQ.TECHNOL."
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "SC.NUMERIQ.TECHNOL.",
+    "salle": "En Labo4",
+    "prof": "KAMARA S.",
+    "couleur": "#999933",
+    "annule": false
   },
   {
-    "matiere": "ANGLAIS LV1"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "ANGLAIS LV1",
+    "salle": "",
+    "prof": "BEN SALAH F.",
+    "couleur": "#ff99cc",
+    "annule": false
   },
   {
-    "matiere": "MATHEMATIQUES"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "MATHEMATIQUES",
+    "salle": "",
+    "prof": "GARNIER F.",
+    "couleur": "#ffcc66",
+    "annule": false
   },
   {
-    "matiere": "CONGÉS"
+    "jour": "",
+    "debut": "",
+    "fin": "",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false
   }
 ]
