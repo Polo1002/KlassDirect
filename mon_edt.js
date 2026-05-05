@@ -85,7 +85,8 @@ async function autoLog(page, message) {
     console.log("🚀 Navigation vers l'EDT...");
     await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle0' });
     
-    await pause(6000);
+    // On attend que les événements de l'EDT apparaissent (max 15 secondes)
+    await page.waitForSelector('.dhx_cal_event', { timeout: 15000 }).catch(() => console.log("⏳ Temps écoulé, la page est peut-être vide ou lente."));
     await autoLog(page, "Extraction_Donnees");
 
     const cours = await page.evaluate(() => {
