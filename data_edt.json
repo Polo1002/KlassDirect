@@ -64,7 +64,7 @@
     "debut": "08:30",
     "fin": "09:25",
     "matiere": "HISTOIRE-GEOGRAPHIE",
-    "salle": "C3 RESEAU 2, C3 RESEAU 1",
+    "salle": "C3 RESEAU 1, C3 RESEAU 2",
     "prof": "PRAQUIN V.",
     "couleur": "#66ccff",
     "annule": false
@@ -77,6 +77,16 @@
     "salle": "C203",
     "prof": "GARNIER F.",
     "couleur": "#ffcc66",
+    "annule": false
+  },
+  {
+    "jour": "",
+    "debut": "10:35",
+    "fin": "11:30",
+    "matiere": "THEME",
+    "salle": "C208",
+    "prof": "DOUILLY N.",
+    "couleur": "#91b2bc",
     "annule": false
   },
   {
@@ -241,7 +251,7 @@
   },
   {
     "identifiant": "Paul135",
-    "derniere_mise_a_jour": "04/05/2026 à 20:25:25",
-    "duree_extraction": "42.27 secondes"
+    "derniere_mise_a_jour": "05/05/2026 à 13:19:47",
+    "duree_extraction": "41.57 secondes"
   }
 ]
