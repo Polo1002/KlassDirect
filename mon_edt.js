@@ -153,8 +153,8 @@ async function autoLog(page, message) {
         const endTime = Date.now();
         const durationSeconds = ((endTime - startTime) / 1000).toFixed(2);
         const now = new Date();
-        const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Paris' });
-        const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/Paris' });
+        const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
         // Création de l'objet de métadonnées
         const metadata = {
