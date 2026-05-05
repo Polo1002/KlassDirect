@@ -93,6 +93,18 @@ async function autoLog(page, message) {
         const data = [];
 
         elements.forEach(el => {
+            // --- EXTRACTION ET CONVERSION DU JOUR ---
+            const timestamp = el.getAttribute('data-bar-start');
+            let jourExtrait = "";
+            
+            if (timestamp) {
+                const d = new Date(parseInt(timestamp));
+                const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+                const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+                jourExtrait = `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]}`;
+            }
+
+            // --- EXTRACTION DES HORAIRES ET DE LA SALLE ---
             const header = el.querySelector('.edt-cours-header');
             let debut = "", fin = "", salle = "";
             
@@ -112,6 +124,7 @@ async function autoLog(page, message) {
             const matiere = el.querySelector('.edt-cours-text')?.innerText.trim() || "";
             const prof = el.querySelector('.edt-prof')?.innerText.trim() || "";
 
+            // --- EXTRACTION DE LA COULEUR ---
             let couleur = el.style.getPropertyValue('--dhx-scheduler-event-background').trim();
             if (!couleur) {
                 const bg = window.getComputedStyle(el).backgroundColor;
@@ -122,7 +135,7 @@ async function autoLog(page, message) {
             const annule = el.innerText.includes("ANNULÉ") || el.classList.contains("annule");
 
             data.push({
-                jour: "", // Remplir manuellement ou via sélecteur jour si dispo
+                jour: jourExtrait,
                 debut: debut,
                 fin: fin,
                 matiere: matiere,
