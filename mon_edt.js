@@ -75,8 +75,9 @@ async function autoLog(page, message) {
     }
 
     console.log("🚀 Navigation vers l'EDT...");
-    await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle0' });
-    
+    await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle2' });
+    // Laisse le temps au site de stabiliser l'affichage
+    await pause(2000);
     // Attente que le calendrier soit bien là
     await page.waitForSelector('.dhx_cal_navline', { timeout: 15000 });
 
