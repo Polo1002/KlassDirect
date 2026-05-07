@@ -1,7 +1,13 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 
-// Début du chronomètre
+// ================= CONFIGURATION SEMAINES =================
+// NB_SEMAINES_PASSE : 0 ou négatif (ex: -2 pour les deux dernières semaines)
+// NB_SEMAINES_FUTUR : 0 ou positif (ex: 1 pour la semaine prochaine)
+const NB_SEMAINES_PASSE = -2; 
+const NB_SEMAINES_FUTUR = 1;  
+// ==========================================================
+
 const startTime = Date.now();
 
 let IDENTIFIANT, MOT_DE_PASSE, RÉPONSES_SÉCURITÉ;
@@ -15,7 +21,7 @@ if (fs.existsSync('./config.js')) {
     IDENTIFIANT = process.env.ED_IDENTIFIANT;
     MOT_DE_PASSE = process.env.MOT_DE_PASSE; 
     RÉPONSES_SÉCURITÉ = process.env.ED_REPONSES ? 
-        process.env.ED_REPONSES.split(',').map(s => s.replace(/["']/g, "").trim()) : [];
+        process.env.ED_REPONSES.split(',').map(s => s.replace(/[\"']/g, \"\").trim()) : [];
 }
 
 const DIR = './logs';
@@ -30,157 +36,119 @@ async function autoLog(page, message) {
 }
 
 (async () => {
-  const browser = await puppeteer.launch({ 
-    headless: "new",
-    slowMo: 50, 
-    args: ['--no-sandbox', '--disable-setuid-sandbox'] 
-  }); 
-
-  const page = await browser.newPage();
-  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-  await page.setViewport({ width: 1400, height: 900 });
-
-  try {
-    console.log("🌐 DÉMARRAGE...");
-    await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
-    
-    await pause(2000);
-    await page.type('#username', IDENTIFIANT, { delay: 150 });
-    await pause(1000);
-    await page.type('#password', MOT_DE_PASSE, { delay: 150 });
-    
-    await autoLog(page, "Saisie_Identifiants");
-    await page.click('#connexion');
-    await pause(5000);
-
-    // --- BOUCLE DE SÉCURITÉ ---
-    let loop = 0;
-    while (loop < 5) {
-        const check = await page.evaluate(() => {
-            const modals = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content'));
-            return { isVisible: modals.length > 0, count: modals.length };
-        });
-        if (!check.isVisible) break;
-        loop++;
-        console.log(`🛡️ Sécurité détectée (Niveau ${check.count})...`);
-        await pause(3000);
-        await page.evaluate((reps) => {
-            const currentModal = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content')).pop();
-            const labels = Array.from(currentModal.querySelectorAll('label'));
-            for (let r of reps) {
-                const target = labels.find(el => el.innerText.trim().toLowerCase() === r.toLowerCase());
-                if (target) { target.click(); return true; }
-            }
-            return false;
-        }, RÉPONSES_SÉCURITÉ);
-        await pause(1500);
-        const buttonHandle = await page.evaluateHandle(() => {
-            const modals = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content'));
-            return modals.pop()?.querySelector('button[type="submit"]');
-        });
-        if (buttonHandle) { await buttonHandle.click(); console.log("📤 Validation envoyée."); }
-        await pause(6000);
-    }
-
-    console.log("🚀 Navigation vers l'EDT...");
-    await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle0' });
-    
-    // On attend que les événements de l'EDT apparaissent (max 15 secondes)
-    await page.waitForSelector('.dhx_cal_event', { timeout: 15000 }).catch(() => console.log("⏳ Temps écoulé, la page est peut-être vide ou lente."));
-    await autoLog(page, "Extraction_Donnees");
-
-    const cours = await page.evaluate(() => {
-        const elements = document.querySelectorAll('.dhx_cal_event');
-        const data = [];
-
-        elements.forEach(el => {
-            // --- EXTRACTION ET CONVERSION DU JOUR ---
-            const timestamp = el.getAttribute('data-bar-start');
-            let jourExtrait = "";
-            
-            if (timestamp) {
-                const d = new Date(parseInt(timestamp));
-                const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-                const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-                jourExtrait = `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]}`;
-            }
-
-            // --- EXTRACTION DES HORAIRES ET DE LA SALLE ---
-            const header = el.querySelector('.edt-cours-header');
-            let debut = "", fin = "", salle = "";
-            
-            if (header) {
-                const fullHeaderText = header.innerText.trim();
-                const horaireMatch = fullHeaderText.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
-                if (horaireMatch) {
-                    debut = horaireMatch[1];
-                    fin = horaireMatch[2];
-                }
-                const salleSpan = header.querySelector('.float-end');
-                if (salleSpan) {
-                    salle = salleSpan.innerText.replace(/^En\s+/i, '').trim();
-                }
-            }
-
-            const matiere = el.querySelector('.edt-cours-text')?.innerText.trim() || "";
-            const prof = el.querySelector('.edt-prof')?.innerText.trim() || "";
-
-            // --- EXTRACTION DE LA COULEUR ---
-            let couleur = el.style.getPropertyValue('--dhx-scheduler-event-background').trim();
-            if (!couleur) {
-                const bg = window.getComputedStyle(el).backgroundColor;
-                const rgb = bg.match(/\d+/g);
-                couleur = rgb ? "#" + rgb.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('') : "#f3f3f3";
-            }
-
-            // --- DÉTECTION DES STATUTS (Annulé / Modifié) ---
-            const annule = el.innerText.includes("ANNULÉ") || el.classList.contains("annule");
-            const modifie = el.querySelector('.fa-triangle-exclamation') !== null || el.querySelector('[title="cours modifié"]') !== null;
-
-            data.push({
-                jour: jourExtrait,
-                debut: debut,
-                fin: fin,
-                matiere: matiere,
-                salle: salle,
-                prof: prof,
-                couleur: couleur,
-                annule: annule,
-                modifie: modifie
-            });
-        });
-        return data;
+    const browser = await puppeteer.launch({ 
+        headless: "new",
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 800 });
 
-    if (cours.length > 0) {
-        // --- CALCUL DES MÉTADONNÉES ---
-        const endTime = Date.now();
-        const durationSeconds = ((endTime - startTime) / 1000).toFixed(2);
-        const now = new Date();
-        const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    try {
+        console.log("🌐 DÉMARRAGE...");
+        await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
 
-        // Création de l'objet de métadonnées
-        const metadata = {
-            identifiant: IDENTIFIANT,
-            derniere_mise_a_jour: `${dateStr} à ${timeStr}`,
-            duree_extraction: `${durationSeconds} secondes`
-        };
+        // --- CONNEXION ---
+        await page.type('input[placeholder="Identifiant"]', IDENTIFIANT);
+        await page.type('input[placeholder="Mot de passe"]', MOT_DE_PASSE);
+        await page.click('button#connexion');
+        await pause(3000);
 
-        // On ajoute les métadonnées comme dernier élément du tableau
-        cours.push(metadata);
+        // --- DOUBLE AUTHENTIFICATION (Si présente) ---
+        const isDoubleAuth = await page.evaluate(() => !!document.querySelector('ed-questions2-fa-auth'));
+        if (isDoubleAuth) {
+            const questionText = await page.evaluate(() => document.querySelector('.question-label')?.innerText.trim());
+            console.log(`🔑 Question : ${questionText}`);
 
-        console.log(`✅ SUCCÈS : ${cours.length - 1} cours récupérés.`);
-        console.log(`⏱️ Durée : ${durationSeconds}s`);
+            const reponseMatch = RÉPONSES_SÉCURITÉ.find(r => questionText?.toLowerCase().includes(r.toLowerCase()) || r.toLowerCase().includes(questionText?.toLowerCase()));
+            
+            if (reponseMatch) {
+                await page.type('input[type="text"]', reponseMatch);
+                await page.click('button[type="submit"]');
+                console.log("✅ Réponse envoyée.");
+            }
+            await pause(4000);
+        }
+
+        // --- NAVIGATION EDT ---
+        console.log("🚀 Navigation vers l'EDT...");
+        await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle0' });
         
-        fs.writeFileSync('./data_edt.json', JSON.stringify(cours, null, 2));
-    } else {
-        console.log("❌ ÉCHEC : Aucun cours trouvé.");
-    }
+        // Attente initiale pour charger la semaine actuelle
+        await page.waitForSelector('.dhx_cal_navline', { timeout: 10000 });
 
-  } catch (err) {
-    console.error(`💥 ERREUR : ${err.message}`);
-  } finally {
-    await browser.close();
-  }
+        // --- LOGIQUE DE NAVIGATION MULTI-SEMAINES ---
+        let tousLesCours = [];
+        const clicsRetour = Math.abs(NB_SEMAINES_PASSE);
+        const totalSemaines = clicsRetour + NB_SEMAINES_FUTUR + 1;
+
+        // 1. Reculer jusqu'à la semaine la plus ancienne
+        if (clicsRetour > 0) {
+            console.log(`⬅️ Recul de ${clicsRetour} semaines...`);
+            for (let i = 0; i < clicsRetour; i++) {
+                await page.click('.dhx_cal_prev_button');
+                await pause(1500); 
+            }
+        }
+
+        // 2. Extraire et avancer
+        for (let i = 0; i < totalSemaines; i++) {
+            // Récupérer la date affichée pour les logs
+            const dateAffichee = await page.evaluate(() => document.querySelector('.dhx_cal_date')?.innerText.trim());
+            console.log(`[SEMAINE ${i + 1}/${totalSemaines}] Extraction : ${dateAffichee}`);
+
+            // Attendre les cours (avec un petit délai si la semaine est vide)
+            await page.waitForSelector('.dhx_cal_event', { timeout: 5000 }).catch(() => {});
+            
+            const coursSemaine = await page.evaluate(() => {
+                const events = Array.from(document.querySelectorAll('.dhx_cal_event'));
+                return events.map(e => {
+                    const text = e.querySelector('.edt-cours-text')?.innerText || "";
+                    const lignes = text.split('\n').map(l => l.trim()).filter(l => l);
+                    
+                    return {
+                        jour: document.querySelector('.dhx_cal_date')?.innerText.trim(), // On garde la période pour référence
+                        heure: e.querySelector('.dhx_event_time')?.innerText.trim(),
+                        matiere: lignes[0] || "Inconnu",
+                        salle: lignes[1] || "",
+                        prof: lignes[2] || "",
+                        annule: e.classList.contains('event_annule')
+                    };
+                });
+            });
+
+            tousLesCours.push(...coursSemaine);
+
+            // Avancer à la semaine suivante (sauf si c'est la dernière)
+            if (i < totalSemaines - 1) {
+                await page.click('.dhx_cal_next_button');
+                await pause(1500);
+            }
+        }
+
+        // --- SAUVEGARDE ---
+        if (tousLesCours.length > 0) {
+            const endTime = Date.now();
+            const duration = ((endTime - startTime) / 1000).toFixed(2);
+            const now = new Date();
+            
+            const metadata = {
+                identifiant: IDENTIFIANT,
+                derniere_mise_a_jour: now.toLocaleString('fr-FR'),
+                semaines_extraites: totalSemaines,
+                duree_extraction: `${duration}s`
+            };
+
+            tousLesCours.push(metadata);
+
+            fs.writeFileSync('./data_edt.json', JSON.stringify(tousLesCours, null, 2));
+            console.log(`✅ SUCCÈS : ${tousLesCours.length - 1} cours sauvegardés.`);
+        } else {
+            console.log("❌ ÉCHEC : Aucun cours trouvé sur l'ensemble des semaines.");
+        }
+
+    } catch (error) {
+        console.error(`🔴 ERREUR CRITIQUE : ${error.message}`);
+    } finally {
+        await browser.close();
+    }
 })();
