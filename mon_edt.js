@@ -160,7 +160,7 @@ async function autoLog(page, message) {
 
                 data.push({
                     jour: jourExtrait,
-                    annee: anneeExtraite, // Ajouté ici pour corriger l'oubli
+                    annee: anneeExtraite, 
                     debut: debut,
                     fin: fin,
                     matiere: matiere,
@@ -230,7 +230,6 @@ async function autoLog(page, message) {
     const minSemaine = semainesATraiter[0];
     const maxSemaine = semainesATraiter[semainesATraiter.length - 1];
     
-    // Remplace les anciennes constantes statiques nbRecul et nbAvance
     const nbRecul = minSemaine < 0 ? Math.abs(minSemaine) : 0;
     const nbAvance = maxSemaine - minSemaine; 
 
@@ -278,11 +277,14 @@ async function autoLog(page, message) {
 
     // --- FUSION ET SAUVEGARDE FINALE ---
     if (existingData.length > 0) {
-        // On conserve les anciennes données SAUF si elles appartiennent aux semaines qu'on vient de re-télécharger
+        // Double sécurité : on liste exactement les jours qu'on vient de télécharger
+        const joursTelecharges = [...new Set(cours.map(c => c.jour))];
+
         let dataToKeep = existingData.filter(coursItem => {
             const dateCours = parserDateED(coursItem.jour);
             if (!dateCours) return false;
             
+            // 1. Le cours ancien appartient-il à une semaine qu'on vient de re-télécharger entièrement ?
             const appartientASemaineMiseAJour = semainesATraiter.some(i => {
                 const debut = new Date(LUNDI_S0);
                 debut.setDate(debut.getDate() + (i * 7));
@@ -290,14 +292,18 @@ async function autoLog(page, message) {
                 fin.setDate(fin.getDate() + 6);
                 return dateCours >= debut && dateCours <= fin;
             });
+
+            // 2. Le cours ancien a-t-il lieu un jour précis qu'on vient de télécharger ? (Sécurité)
+            const jourExactEcrase = joursTelecharges.includes(coursItem.jour);
             
-            return !appartientASemaineMiseAJour;
+            // On conserve l'ancienne donnée SEULEMENT SI elle n'est ni dans la semaine ciblée, ni dans les jours écrasés
+            return !appartientASemaineMiseAJour && !jourExactEcrase;
         });
         
         // Concaténation : (anciennes données non obsolètes) + (nouvelles données fraîches)
         cours = dataToKeep.concat(cours);
         
-        // Optionnel : trier le tableau final chronologiquement
+        // Optionnel : trier le tableau final chronologiquement pour que le JSON reste propre
         cours.sort((a, b) => parserDateED(a.jour) - parserDateED(b.jour));
     }
 
