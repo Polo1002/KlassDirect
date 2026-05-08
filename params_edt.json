@@ -4,7 +4,7 @@
   "useCustomProfs": true,
   "useCustomSubjects": true,
   "themeSetting": "auto",
-  "customGradient1": null,
+  "customGradient1": "#8400fd",
   "customGradient2": "#8400fd",
   "weeksBefore": 0,
   "weeksAfter": 1,
