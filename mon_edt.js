@@ -89,68 +89,94 @@ async function autoLog(page, message) {
     await page.waitForSelector('.dhx_cal_event', { timeout: 15000 }).catch(() => console.log("⏳ Temps écoulé, la page est peut-être vide ou lente."));
     await autoLog(page, "Extraction_Donnees");
 
-    const cours = await page.evaluate(() => {
-        const elements = document.querySelectorAll('.dhx_cal_event');
-        const data = [];
+    // --- NOUVELLE FONCTION REPRENANT EXACTEMENT LES LIGNES ACTUELLES ---
+    const extraireLesCours = async () => {
+        return await page.evaluate(() => {
+            const elements = document.querySelectorAll('.dhx_cal_event');
+            const data = [];
 
-        elements.forEach(el => {
-            // --- EXTRACTION ET CONVERSION DU JOUR ---
-            const timestamp = el.getAttribute('data-bar-start');
-            let jourExtrait = "";
-            
-            if (timestamp) {
-                const d = new Date(parseInt(timestamp));
-                const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-                const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-                jourExtrait = `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]}`;
-            }
-
-            // --- EXTRACTION DES HORAIRES ET DE LA SALLE ---
-            const header = el.querySelector('.edt-cours-header');
-            let debut = "", fin = "", salle = "";
-            
-            if (header) {
-                const fullHeaderText = header.innerText.trim();
-                const horaireMatch = fullHeaderText.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
-                if (horaireMatch) {
-                    debut = horaireMatch[1];
-                    fin = horaireMatch[2];
+            elements.forEach(el => {
+                // --- EXTRACTION ET CONVERSION DU JOUR ---
+                const timestamp = el.getAttribute('data-bar-start');
+                let jourExtrait = "";
+                
+                if (timestamp) {
+                    const d = new Date(parseInt(timestamp));
+                    const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+                    const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+                    jourExtrait = `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]}`;
                 }
-                const salleSpan = header.querySelector('.float-end');
-                if (salleSpan) {
-                    salle = salleSpan.innerText.replace(/^En\s+/i, '').trim();
+
+                // --- EXTRACTION DES HORAIRES ET DE LA SALLE ---
+                const header = el.querySelector('.edt-cours-header');
+                let debut = "", fin = "", salle = "";
+                
+                if (header) {
+                    const fullHeaderText = header.innerText.trim();
+                    const horaireMatch = fullHeaderText.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+                    if (horaireMatch) {
+                        debut = horaireMatch[1];
+                        fin = horaireMatch[2];
+                    }
+                    const salleSpan = header.querySelector('.float-end');
+                    if (salleSpan) {
+                        salle = salleSpan.innerText.replace(/^En\s+/i, '').trim();
+                    }
                 }
-            }
 
-            const matiere = el.querySelector('.edt-cours-text')?.innerText.trim() || "";
-            const prof = el.querySelector('.edt-prof')?.innerText.trim() || "";
+                const matiere = el.querySelector('.edt-cours-text')?.innerText.trim() || "";
+                const prof = el.querySelector('.edt-prof')?.innerText.trim() || "";
 
-            // --- EXTRACTION DE LA COULEUR ---
-            let couleur = el.style.getPropertyValue('--dhx-scheduler-event-background').trim();
-            if (!couleur) {
-                const bg = window.getComputedStyle(el).backgroundColor;
-                const rgb = bg.match(/\d+/g);
-                couleur = rgb ? "#" + rgb.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('') : "#f3f3f3";
-            }
+                // --- EXTRACTION DE LA COULEUR ---
+                let couleur = el.style.getPropertyValue('--dhx-scheduler-event-background').trim();
+                if (!couleur) {
+                    const bg = window.getComputedStyle(el).backgroundColor;
+                    const rgb = bg.match(/\d+/g);
+                    couleur = rgb ? "#" + rgb.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('') : "#f3f3f3";
+                }
 
-            // --- DÉTECTION DES STATUTS (Annulé / Modifié) ---
-            const annule = el.innerText.includes("ANNULÉ") || el.classList.contains("annule");
-            const modifie = el.querySelector('.fa-triangle-exclamation') !== null || el.querySelector('[title="cours modifié"]') !== null;
+                // --- DÉTECTION DES STATUTS (Annulé / Modifié) ---
+                const annule = el.innerText.includes("ANNULÉ") || el.classList.contains("annule");
+                const modifie = el.querySelector('.fa-triangle-exclamation') !== null || el.querySelector('[title="cours modifié"]') !== null;
 
-            data.push({
-                jour: jourExtrait,
-                debut: debut,
-                fin: fin,
-                matiere: matiere,
-                salle: salle,
-                prof: prof,
-                couleur: couleur,
-                annule: annule,
-                modifie: modifie
+                data.push({
+                    jour: jourExtrait,
+                    debut: debut,
+                    fin: fin,
+                    matiere: matiere,
+                    salle: salle,
+                    prof: prof,
+                    couleur: couleur,
+                    annule: annule,
+                    modifie: modifie
+                });
             });
+            return data;
         });
-        return data;
-    });
+    };
+
+    let cours = [];
+
+    // --- NAVIGATION ET TÉLÉCHARGEMENT ---
+    console.log("⏳ Attente de 10 secondes...");
+    await pause(10000);
+
+    console.log("⬅️ Navigation : recul de 2 semaines...");
+    await page.click('.dhx_cal_prev_button');
+    await pause(10000);
+    await page.click('.dhx_cal_prev_button');
+    await pause(10000);
+
+    console.log("📥 Téléchargement des données (Semaine -2)...");
+    cours = cours.concat(await extraireLesCours());
+
+    console.log("➡️ Navigation : avancement sur 3 semaines...");
+    for (let i = 1; i <= 3; i++) {
+        await page.click('.dhx_cal_next_button');
+        await pause(10000);
+        console.log(`📥 Téléchargement des données (Semaine ${i - 2})...`);
+        cours = cours.concat(await extraireLesCours());
+    }
 
     if (cours.length > 0) {
         // --- CALCUL DES MÉTADONNÉES ---
@@ -170,8 +196,8 @@ async function autoLog(page, message) {
         // On ajoute les métadonnées comme dernier élément du tableau
         cours.push(metadata);
 
-        console.log(`✅ SUCCÈS : ${cours.length - 1} cours récupérés.`);
-        console.log(`⏱️ Durée : ${durationSeconds}s`);
+        console.log(`✅ SUCCÈS : ${cours.length - 1} cours récupérés sur 4 semaines.`);
+        console.log(`⏱️ Durée globale : ${durationSeconds}s`);
         
         fs.writeFileSync('./data_edt.json', JSON.stringify(cours, null, 2));
     } else {
