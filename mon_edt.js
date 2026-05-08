@@ -2,11 +2,10 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 
 // ================= CONFIGURATION DES SEMAINES =================
-const NB_SEMAINES_PASSE = -2; // 0 ou négatif
-const NB_SEMAINES_FUTUR = 1;  // 0 ou positif
+const NB_SEMAINES_PASSE = -2; 
+const NB_SEMAINES_FUTUR = 1;  
 // ==============================================================
 
-// Début du chronomètre
 const startTime = Date.now();
 
 let IDENTIFIANT, MOT_DE_PASSE, RÉPONSES_SÉCURITÉ;
@@ -19,7 +18,6 @@ if (fs.existsSync('./config.js')) {
 } else {
     IDENTIFIANT = process.env.ED_IDENTIFIANT;
     MOT_DE_PASSE = process.env.MOT_DE_PASSE; 
-    // Ligne 24 corrigée (plus de SyntaxError)
     RÉPONSES_SÉCURITÉ = process.env.ED_REPONSES ? 
         process.env.ED_REPONSES.split(',').map(s => s.replace(/["']/g, "").trim()) : [];
 }
@@ -30,6 +28,14 @@ if (!fs.existsSync(DIR)) { fs.mkdirSync(DIR, { recursive: true }); }
 let step = 1;
 const pause = (ms) => new Promise(r => setTimeout(r, ms + Math.random() * 1000));
 
+// --- FONCTION DE DÉBOGAGE TEXTE ---
+async function dumpPageText(page, context) {
+    const text = await page.evaluate(() => document.body.innerText.replace(/\n\s*\n/g, '\n').trim());
+    console.log(`\n--- [DEBUG TEXTE : ${context.toUpperCase()}] ---`);
+    console.log(text.substring(0, 1000)); // On affiche les 1000 premiers caractères pour ne pas inonder les logs
+    console.log(`--- [FIN DU DEBUG] ---\n`);
+}
+
 async function autoLog(page, message) {
     console.log(`[ÉTAPE ${step}] 📸 ${message.toUpperCase()}`);
     step++;
@@ -39,92 +45,142 @@ async function autoLog(page, message) {
   const browser = await puppeteer.launch({ 
     headless: "new",
     slowMo: 50, 
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+    args: ['--no-sandbox', '--disable-setuid-sandbox'] 
+  }); 
+
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800 });
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  await page.setViewport({ width: 1400, height: 900 });
 
   try {
     console.log("🌐 DÉMARRAGE...");
-    await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2' });
+    await page.goto('https://www.ecoledirecte.com/login', { waitUntil: 'networkidle2', timeout: 60000 });
+    await dumpPageText(page, "Page de connexion");
 
-    await page.type('input[placeholder="Identifiant"]', IDENTIFIANT);
-    await page.type('input[placeholder="Mot de passe"]', MOT_DE_PASSE);
-    await page.click('button#connexion');
-    await pause(3000);
+    await pause(2000);
+    await page.type('#username', IDENTIFIANT, { delay: 150 });
+    await page.type('#password', MOT_DE_PASSE, { delay: 150 });
+    await page.click('#connexion');
+    
+    console.log("⏳ Attente après clic connexion...");
+    await pause(8000);
+    await dumpPageText(page, "Après clic connexion");
 
-    const isDoubleAuth = await page.evaluate(() => !!document.querySelector('ed-questions2-fa-auth'));
-    if (isDoubleAuth) {
-        const questionText = await page.evaluate(() => document.querySelector('.question-label')?.innerText.trim());
-        console.log(`🔑 Question : ${questionText}`);
+    // --- DOUBLE AUTHENTIFICATION ---
+    let loop = 0;
+    while (loop < 3) {
+        const isDoubleAuth = await page.evaluate(() => !!document.querySelector('ed-questions2-fa-auth, .modal-content'));
+        if (!isDoubleAuth) break;
 
-        const reponseMatch = RÉPONSES_SÉCURITÉ.find(r => questionText?.toLowerCase().includes(r.toLowerCase()) || r.toLowerCase().includes(questionText?.toLowerCase()));
+        console.log(`🛡️ Sécurité détectée (Tentative ${loop + 1})...`);
+        
+        const questionText = await page.evaluate(() => {
+            const el = document.querySelector('.question-label') || document.querySelector('label');
+            return el ? el.innerText.trim() : "Question non trouvée";
+        });
+        console.log(`🔑 Question identifiée : ${questionText}`);
+
+        const reponseMatch = RÉPONSES_SÉCURITÉ.find(r => 
+            questionText.toLowerCase().includes(r.toLowerCase()) || 
+            r.toLowerCase().includes(questionText.toLowerCase())
+        );
         
         if (reponseMatch) {
-            await page.type('input[type="text"]', reponseMatch);
-            const buttonHandle = await page.evaluateHandle(() => {
-                const modals = Array.from(document.querySelectorAll('ed-questions2-fa-auth, .modal-content'));
-                return modals.pop()?.querySelector('button[type="submit"]');
-            });
-            if (buttonHandle) await buttonHandle.click();
+            console.log(`✅ Correspondance trouvée : ${reponseMatch}`);
+            await page.evaluate((rep) => {
+                const labels = Array.from(document.querySelectorAll('label'));
+                const target = labels.find(el => el.innerText.trim().toLowerCase() === rep.toLowerCase());
+                if (target) target.click();
+            }, reponseMatch);
+            
+            await pause(1000);
+            const submitBtn = await page.$('button[type="submit"]');
+            if (submitBtn) await submitBtn.click();
+        } else {
+            console.log("⚠️ Aucune réponse correspondante dans ED_REPONSES.");
         }
-        await pause(6000);
+
+        await pause(7000);
+        loop++;
     }
 
     console.log("🚀 Navigation vers l'EDT...");
-    await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTempor', { waitUntil: 'networkidle2' });
+    // Augmentation du timeout à 60s et passage en networkidle2 pour plus de souplesse
+    await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { 
+        waitUntil: 'networkidle2', 
+        timeout: 60000 
+    });
     
-    // On attend le calendrier avec un timeout plus long (30s) pour plus de robustesse
+    await dumpPageText(page, "Page EDT chargée");
+
     await page.waitForSelector('.dhx_cal_navline', { timeout: 30000 });
     await pause(2000);
 
-    // --- NOUVELLE LOGIQUE DE BOUCLE ---
+    // --- LOGIQUE MULTI-SEMAINES ---
     let tousLesCours = [];
     const clicsRetour = Math.abs(NB_SEMAINES_PASSE);
     const totalSemaines = clicsRetour + NB_SEMAINES_FUTUR + 1;
 
-    // Étape A : On recule
     if (clicsRetour > 0) {
         console.log(`⬅️ Recul de ${clicsRetour} semaines...`);
         for (let i = 0; i < clicsRetour; i++) {
             await page.click('.dhx_cal_prev_button');
-            await pause(10000);
+            console.log(`   [Attente 10s après clic gauche]`);
+            await pause(10000); 
         }
     }
 
-    // Étape B : On extrait et on avance
     for (let s = 0; s < totalSemaines; s++) {
         const dateAffichee = await page.evaluate(() => document.querySelector('.dhx_cal_date')?.innerText.trim());
-        console.log(`[SEMAINE ${s+1}/${totalSemaines}] Extraction : ${dateAffichee}`);
+        console.log(`[SEMAINE ${s + 1}/${totalSemaines}] Extraction : ${dateAffichee}`);
 
-        // On attend que les cours soient là (on ne bloque pas si la semaine est vide)
-        await page.waitForSelector('.dhx_cal_event', { timeout: 5000 }).catch(() => {});
+        await page.waitForSelector('.dhx_cal_event', { timeout: 5000 }).catch(() => {
+            console.log("ℹ️ Semaine vide ou aucun cours visible.");
+        });
 
-        // TON EXTRACTION ORIGINALE (Inchangée)
         const coursSemaine = await page.evaluate(() => {
-            const data = [];
             const elements = document.querySelectorAll('.dhx_cal_event');
-            const dateLabel = document.querySelector('.dhx_cal_date')?.innerText.trim() || "";
-            
-            elements.forEach(e => {
-                const timeContainer = e.querySelector('.dhx_event_time');
-                const times = timeContainer ? timeContainer.innerText.split(' - ') : ["", ""];
-                const debut = times[0] ? times[0].trim() : "";
-                const fin = times[1] ? times[1].trim() : "";
+            const data = [];
+            elements.forEach(el => {
+                const timestamp = el.getAttribute('data-bar-start');
+                let jourExtrait = "";
+                if (timestamp) {
+                    const d = new Date(parseInt(timestamp));
+                    const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+                    const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+                    jourExtrait = `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]}`;
+                }
 
-                const textContent = e.querySelector('.edt-cours-text');
-                const lignes = textContent ? textContent.innerText.split('\n').map(l => l.trim()).filter(l => l) : [];
+                const header = el.querySelector('.edt-cours-header');
+                let debut = "", fin = "", salle = "";
+                if (header) {
+                    const fullHeaderText = header.innerText.trim();
+                    const horaireMatch = fullHeaderText.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+                    if (horaireMatch) {
+                        debut = horaireMatch[1];
+                        fin = horaireMatch[2];
+                    }
+                    const salleSpan = header.querySelector('.float-end');
+                    if (salleSpan) {
+                        salle = salleSpan.innerText.replace(/^En\s+/i, '').trim();
+                    }
+                }
+
+                const matiere = el.querySelector('.edt-cours-text')?.innerText.trim() || "";
+                const prof = el.querySelector('.edt-prof')?.innerText.trim() || "";
+                let couleur = el.style.getPropertyValue('--dhx-scheduler-event-background').trim();
                 
-                const matiere = lignes[0] || "Inconnu";
-                const salle = lignes[1] || "";
-                const prof = lignes[2] || "";
-                const couleur = e.style.backgroundColor || "";
-                const annule = e.classList.contains('event_annule');
-                const modifie = !!e.querySelector('.fa-exclamation-triangle');
+                if (!couleur) {
+                    const bg = window.getComputedStyle(el).backgroundColor;
+                    const rgb = bg.match(/\d+/g);
+                    couleur = rgb ? "#" + rgb.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('') : "#f3f3f3";
+                }
+
+                const annule = el.innerText.includes("ANNULÉ") || el.classList.contains("annule");
+                const modifie = el.querySelector('.fa-triangle-exclamation') !== null;
 
                 data.push({
-                    periode: dateLabel, 
-                    jour: "", 
+                    jour: jourExtrait,
                     debut: debut,
                     fin: fin,
                     matiere: matiere,
@@ -140,38 +196,32 @@ async function autoLog(page, message) {
 
         tousLesCours.push(...coursSemaine);
 
-        // On avance à la semaine suivante (sauf si c'est la dernière)
         if (s < totalSemaines - 1) {
             await page.click('.dhx_cal_next_button');
-            await pause(2000);
+            console.log(`   [Attente 10s après clic droit]`);
+            await pause(10000); 
         }
     }
 
-    // --- TA LOGIQUE DE SAUVEGARDE ET MÉTADONNÉES (Inchangée) ---
+    // --- SAUVEGARDE ---
     if (tousLesCours.length > 0) {
         const endTime = Date.now();
         const durationSeconds = ((endTime - startTime) / 1000).toFixed(2);
         const now = new Date();
-        const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
         const metadata = {
             identifiant: IDENTIFIANT,
-            derniere_mise_a_jour: `${dateStr} à ${timeStr}`,
+            derniere_mise_a_jour: now.toLocaleString('fr-FR'),
             semaines_extraites: totalSemaines,
             duree_extraction: `${durationSeconds} secondes`
         };
-
         tousLesCours.push(metadata);
-
-        console.log(`✅ SUCCÈS : ${tousLesCours.length - 1} cours récupérés sur ${totalSemaines} semaines.`);
         fs.writeFileSync('./data_edt.json', JSON.stringify(tousLesCours, null, 2));
-    } else {
-        console.log("❌ ÉCHEC : Aucun cours trouvé.");
+        console.log(`✅ SUCCÈS : ${tousLesCours.length - 1} cours enregistrés.`);
     }
 
-  } catch (error) {
-    console.error(`🔴 ERREUR : ${error.message}`);
+  } catch (err) {
+    console.error(`💥 ERREUR : ${err.message}`);
+    await dumpPageText(page, "Erreur fatale");
   } finally {
     await browser.close();
   }
