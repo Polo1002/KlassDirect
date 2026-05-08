@@ -88,10 +88,11 @@ async function autoLog(page, message) {
     }
 
     console.log("🚀 Navigation vers l'EDT...");
-    await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle0' });
+    await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle2', timeout: 60000 });
     
-    // Attente du chargement initial du calendrier
-    await page.waitForSelector('.dhx_cal_navline', { timeout: 30000 });
+    // On attend le conteneur principal du calendrier plutôt que les cours (qui peuvent être absents)
+    await page.waitForSelector('.dhx_cal_container', { timeout: 30000 });
+    await pause(2000); // Petit délai de sécurité supplémentaire
 
     // --- LOGIQUE DE NAVIGATION MULTI-SEMAINES ---
     let tousLesCours = [];
