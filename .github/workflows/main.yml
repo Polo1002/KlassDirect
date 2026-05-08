@@ -39,5 +39,5 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add data_edt.json
           git commit -m "Mise à jour automatique de l'EDT [skip ci]" || echo "Aucun changement à enregistrer"
-          git pull --rebase origin main
+          git pull --rebase --autostash origin main
           git push origin main
