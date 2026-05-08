@@ -1,5 +1,159 @@
 [
   {
+    "jour": "Lun 20 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mar 21 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mer 22 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Jeu 23 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Ven 24 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Sam 25 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Dim 26 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Lun 27 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mar 28 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mer 29 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Jeu 30 Avr",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Ven 1 Mai",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Sam 2 Mai",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Dim 3 Mai",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
     "jour": "Lun 4 Mai",
     "debut": "08:30",
     "fin": "09:25",
@@ -275,8 +429,250 @@
     "modifie": false
   },
   {
+    "jour": "Lun 11 Mai",
+    "debut": "08:30",
+    "fin": "09:25",
+    "matiere": "ESPAGNOL LV2",
+    "salle": "C203",
+    "prof": "BASTARDO I.",
+    "couleur": "#ff99cc",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Lun 11 Mai",
+    "debut": "08:30",
+    "fin": "17:15",
+    "matiere": "MANAGEMENT & GESTION",
+    "salle": "",
+    "prof": "HASSEN S.",
+    "couleur": "#3366ff",
+    "annule": false,
+    "modifie": true
+  },
+  {
+    "jour": "Lun 11 Mai",
+    "debut": "09:25",
+    "fin": "10:20",
+    "matiere": "ESPAGNOL LV2",
+    "salle": "C203",
+    "prof": "BASTARDO I.",
+    "couleur": "#ff99cc",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Lun 11 Mai",
+    "debut": "12:25",
+    "fin": "13:45",
+    "matiere": "SCIENCES VIE & TERRE",
+    "salle": "Labo1",
+    "prof": "GAUDEX A.",
+    "couleur": "#33cc33",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Lun 11 Mai",
+    "debut": "14:05",
+    "fin": "15:25",
+    "matiere": "PHYSIQUE-CHIMIE",
+    "salle": "Labo6",
+    "prof": "LE CUDONNEC M.",
+    "couleur": "#33cc33",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Lun 11 Mai",
+    "debut": "15:55",
+    "fin": "17:15",
+    "matiere": "EPS OPTION",
+    "salle": "GYMNASE 6",
+    "prof": "MORI J.",
+    "couleur": "#ffff66",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mar 12 Mai",
+    "debut": "08:30",
+    "fin": "09:25",
+    "matiere": "HISTOIRE-GEOGRAPHIE",
+    "salle": "C203",
+    "prof": "PRAQUIN V.",
+    "couleur": "#66ccff",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mar 12 Mai",
+    "debut": "09:25",
+    "fin": "10:20",
+    "matiere": "MATHEMATIQUES",
+    "salle": "C203",
+    "prof": "GARNIER F.",
+    "couleur": "#ffcc66",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mar 12 Mai",
+    "debut": "11:30",
+    "fin": "12:25",
+    "matiere": "MANAGEMENT & GESTION",
+    "salle": "C3 RESEAU 2",
+    "prof": "HASSEN S.",
+    "couleur": "#3366ff",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mar 12 Mai",
+    "debut": "13:20",
+    "fin": "14:15",
+    "matiere": "HISTOIRE-GEOGRAPHIE",
+    "salle": "C203",
+    "prof": "PRAQUIN V.",
+    "couleur": "#66ccff",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mar 12 Mai",
+    "debut": "14:15",
+    "fin": "15:10",
+    "matiere": "HISTOIRE-GEOGRAPHIE",
+    "salle": "C203",
+    "prof": "PRAQUIN V.",
+    "couleur": "#66ccff",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mar 12 Mai",
+    "debut": "15:25",
+    "fin": "16:20",
+    "matiere": "MATHEMATIQUES",
+    "salle": "C203",
+    "prof": "GARNIER F.",
+    "couleur": "#ffcc66",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mar 12 Mai",
+    "debut": "16:20",
+    "fin": "17:15",
+    "matiere": "SC. ECONO.& SOCIALES",
+    "salle": "C203",
+    "prof": "KARST B.",
+    "couleur": "#00ccff",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mar 12 Mai",
+    "debut": "17:15",
+    "fin": "18:35",
+    "matiere": "EPS OPTION",
+    "salle": "GYMNASE 6",
+    "prof": "MORI J.",
+    "couleur": "#ffff66",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mer 13 Mai",
+    "debut": "08:30",
+    "fin": "09:25",
+    "matiere": "ESPAGNOL LV2",
+    "salle": "C203",
+    "prof": "BASTARDO I.",
+    "couleur": "#ff99cc",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mer 13 Mai",
+    "debut": "09:25",
+    "fin": "10:20",
+    "matiere": "VIE DE CLASSE",
+    "salle": "C203",
+    "prof": "KAUFF H.",
+    "couleur": "#b80d0d",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mer 13 Mai",
+    "debut": "10:35",
+    "fin": "12:25",
+    "matiere": "ED.PHYSIQUE & SPORT.",
+    "salle": "GYMNASE 5",
+    "prof": "GROS E.",
+    "couleur": "#ffff66",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Mer 13 Mai",
+    "debut": "13:20",
+    "fin": "15:10",
+    "matiere": "FRANCAIS",
+    "salle": "C203",
+    "prof": "KAUFF H.",
+    "couleur": "#1186fe",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Jeu 14 Mai",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Ven 15 Mai",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Sam 16 Mai",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
+    "jour": "Dim 17 Mai",
+    "debut": "07:00",
+    "fin": "23:00",
+    "matiere": "CONGÉS",
+    "salle": "",
+    "prof": "",
+    "couleur": "#e6e6e6",
+    "annule": false,
+    "modifie": false
+  },
+  {
     "identifiant": "Paul135",
-    "derniere_mise_a_jour": "08/05/2026 à 07:08:11",
-    "duree_extraction": "37.27 secondes"
+    "derniere_mise_a_jour": "08/05/2026 à 10:41:50",
+    "duree_extraction": "105.23 secondes"
   }
 ]
