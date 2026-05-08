@@ -275,36 +275,30 @@ async function autoLog(page, message) {
         }
     }
 
+// ... (Tout le début du code reste strictement identique jusqu'à la partie FUSION)
+
     // --- FUSION ET SAUVEGARDE FINALE ---
     if (existingData.length > 0) {
-        // Double sécurité : on liste exactement les jours qu'on vient de télécharger
-        const joursTelecharges = [...new Set(cours.map(c => c.jour))];
+        // 1. On identifie les jours exacts que l'on vient de télécharger (ex: "Lun 13 Avr 2026")
+        const joursVientDeTelecharger = [...new Set(cours.map(c => c.jour))];
+        
+        console.log(`🔄 Fusion : Mise à jour de ${joursVientDeTelecharger.length} jours dans le cache...`);
 
-        let dataToKeep = existingData.filter(coursItem => {
-            const dateCours = parserDateED(coursItem.jour);
-            if (!dateCours) return false;
-            
-            // 1. Le cours ancien appartient-il à une semaine qu'on vient de re-télécharger entièrement ?
-            const appartientASemaineMiseAJour = semainesATraiter.some(i => {
-                const debut = new Date(LUNDI_S0);
-                debut.setDate(debut.getDate() + (i * 7));
-                const fin = new Date(debut);
-                fin.setDate(fin.getDate() + 6);
-                return dateCours >= debut && dateCours <= fin;
-            });
-
-            // 2. Le cours ancien a-t-il lieu un jour précis qu'on vient de télécharger ? (Sécurité)
-            const jourExactEcrase = joursTelecharges.includes(coursItem.jour);
-            
-            // On conserve l'ancienne donnée SEULEMENT SI elle n'est ni dans la semaine ciblée, ni dans les jours écrasés
-            return !appartientASemaineMiseAJour && !jourExactEcrase;
+        // 2. On filtre existingData : on ne garde que les cours dont le jour n'est PAS dans la liste qu'on vient de télécharger
+        let dataToKeep = existingData.filter(coursAncien => {
+            return !joursVientDeTelecharger.includes(coursAncien.jour);
         });
         
-        // Concaténation : (anciennes données non obsolètes) + (nouvelles données fraîches)
+        // 3. On combine : (Les anciens cours des jours non touchés) + (Tous les nouveaux cours téléchargés)
         cours = dataToKeep.concat(cours);
         
-        // Optionnel : trier le tableau final chronologiquement pour que le JSON reste propre
-        cours.sort((a, b) => parserDateED(a.jour) - parserDateED(b.jour));
+        // 4. Tri chronologique pour que le fichier reste lisible
+        cours.sort((a, b) => {
+            const dateA = parserDateED(a.jour);
+            const dateB = parserDateED(b.jour);
+            if (!dateA || !dateB) return 0;
+            return dateA - dateB;
+        });
     }
 
     if (cours.length > 0) {
@@ -315,21 +309,17 @@ async function autoLog(page, message) {
         const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-        // Création de l'objet de métadonnées
         const metadata = {
             identifiant: IDENTIFIANT,
             derniere_mise_a_jour: `${dateStr} à ${timeStr}`,
             duree_extraction: `${durationSeconds} secondes`
         };
 
-        // On ajoute les métadonnées comme dernier élément du tableau
         cours.push(metadata);
 
         console.log(`✅ SUCCÈS : ${cours.length - 1} cours compilés au total.`);
-        console.log(`⏱️ Durée globale : ${durationSeconds}s`);
-        
         fs.writeFileSync('./data_edt.json', JSON.stringify(cours, null, 2));
-    } else {
+} else {
         console.log("❌ ÉCHEC : Aucun cours trouvé.");
     }
 
