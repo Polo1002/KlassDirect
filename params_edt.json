@@ -8,5 +8,6 @@
   "customGradient2": null,
   "weeksBefore": 0,
   "weeksAfter": 1,
-  "courseOpacity": 0.5
+  "courseOpacity": 0.5,
+  "defaultView": "week"
 }
