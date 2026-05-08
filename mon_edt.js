@@ -88,7 +88,7 @@ async function autoLog(page, message) {
         console.log(`⬅️ Recul de ${clicsRetour} semaines...`);
         for (let i = 0; i < clicsRetour; i++) {
             await page.click('.dhx_cal_prev_button');
-            await pause(2000);
+            await pause(10000);
         }
     }
 
