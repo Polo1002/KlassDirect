@@ -108,37 +108,7 @@ async function autoLog(page, message) {
             await pause(10000); 
         }
     }
-    const NB_SEMAINES_PASSE = -2; // Reculer de 2 semaines
-    const NB_SEMAINES_FUTUR = 1;  // Aller jusqu'à la semaine prochaine
-    let tousLesCours = [];
-    const totalSemaines = Math.abs(NB_SEMAINES_PASSE) + NB_SEMAINES_FUTUR + 1;
 
-    // 1. Recul vers la semaine la plus ancienne
-    for (let i = 0; i < Math.abs(NB_SEMAINES_PASSE); i++) {
-        await page.click('.dhx_cal_prev_button');
-        console.log(`⬅️ Recul d'une semaine... (Attente 10s)`);
-        await pause(10000); // ⏱️ Tes 10 secondes d'attente demandées
-    }
-    
-    // 2. Boucle d'extraction et d'avancement
-    for (let s = 0; s < totalSemaines; s++) {
-        const dateAffichee = await page.evaluate(() => document.querySelector('.dhx_cal_date')?.innerText.trim());
-        console.log(`[SEMAINE ${s + 1}/${totalSemaines}] Extraction : ${dateAffichee}`);
-    
-        // Extraction des données (Ta logique actuelle)
-        const coursSemaine = await page.evaluate(() => {
-            /* ... garde ici tout le contenu de ton "await page.evaluate" actuel ... */
-        });
-        tousLesCours.push(...coursSemaine);
-    
-        // Avancer à la semaine suivante (sauf pour la dernière)
-        if (s < totalSemaines - 1) {
-            await page.click('.dhx_cal_next_button');
-            console.log(`➡️ Passage à la semaine suivante... (Attente 10s)`);
-            await pause(10000); // ⏱️ Tes 10 secondes d'attente demandées
-        }
-    }
-// Remplacer "cours" par "tousLesCours" dans la suite de ton script pour la sauvegarde JSON
     // 2. Extraire et avancer
     for (let s = 0; s < totalSemaines; s++) {
         const dateAffichee = await page.evaluate(() => document.querySelector('.dhx_cal_date')?.innerText.trim());
