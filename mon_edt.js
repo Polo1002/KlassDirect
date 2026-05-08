@@ -18,6 +18,22 @@ if (fs.existsSync('./config.js')) {
         process.env.ED_REPONSES.split(',').map(s => s.replace(/["']/g, "").trim()) : [];
 }
 
+// --- LECTURE DES PARAMÈTRES EDT ---
+let weeksBefore = 0;
+let weeksAfter = 0;
+
+if (fs.existsSync('./params_edt.json')) {
+    try {
+        const params = JSON.parse(fs.readFileSync('./params_edt.json', 'utf8'));
+        // On s'assure que weeksBefore est bien négatif ou nul
+        weeksBefore = params.weeksBefore !== undefined ? (params.weeksBefore > 0 ? -params.weeksBefore : params.weeksBefore) : 0;
+        // On s'assure que weeksAfter est bien positif ou nul
+        weeksAfter = params.weeksAfter !== undefined ? (params.weeksAfter < 0 ? -params.weeksAfter : params.weeksAfter) : 0;
+    } catch (err) {
+        console.error("⚠️ Erreur lors de la lecture de params_edt.json, utilisation des valeurs par défaut (0, 0).", err);
+    }
+}
+
 const DIR = './logs';
 if (!fs.existsSync(DIR)) { fs.mkdirSync(DIR, { recursive: true }); }
 
@@ -89,7 +105,6 @@ async function autoLog(page, message) {
     await page.waitForSelector('.dhx_cal_event', { timeout: 15000 }).catch(() => console.log("⏳ Temps écoulé, la page est peut-être vide ou lente."));
     await autoLog(page, "Extraction_Donnees");
 
-    // --- NOUVELLE FONCTION REPRENANT EXACTEMENT LES LIGNES ACTUELLES ---
     const extraireLesCours = async () => {
         return await page.evaluate(() => {
             const elements = document.querySelectorAll('.dhx_cal_event');
@@ -157,25 +172,40 @@ async function autoLog(page, message) {
 
     let cours = [];
 
-    // --- NAVIGATION ET TÉLÉCHARGEMENT ---
+    // --- NAVIGATION ET TÉLÉCHARGEMENT DYNAMIQUE ---
     console.log("⏳ Attente de 10 secondes...");
     await pause(10000);
 
-    console.log("⬅️ Navigation : recul de 2 semaines...");
-    await page.click('.dhx_cal_prev_button');
-    await pause(10000);
-    await page.click('.dhx_cal_prev_button');
-    await pause(10000);
+    const nbRecul = Math.abs(weeksBefore);
+    const nbAvance = nbRecul + weeksAfter;
 
-    console.log("📥 Téléchargement des données (Semaine -2)...");
+    // 1. Reculer jusqu'à la première semaine ciblée (si besoin)
+    if (nbRecul > 0) {
+        console.log(`⬅️ Navigation : recul de ${nbRecul} semaine(s)...`);
+        for (let i = 0; i < nbRecul; i++) {
+            await page.click('.dhx_cal_prev_button');
+            await pause(10000);
+        }
+    }
+
+    // 2. Extraire la première semaine
+    let semaineActuelleEnCours = weeksBefore;
+    console.log(`📥 Téléchargement des données (Semaine ${semaineActuelleEnCours === 0 ? "actuelle" : semaineActuelleEnCours})...`);
     cours = cours.concat(await extraireLesCours());
 
-    console.log("➡️ Navigation : avancement sur 3 semaines...");
-    for (let i = 1; i <= 3; i++) {
-        await page.click('.dhx_cal_next_button');
-        await pause(10000);
-        console.log(`📥 Téléchargement des données (Semaine ${i - 2})...`);
-        cours = cours.concat(await extraireLesCours());
+    // 3. Avancer progressivement jusqu'à la semaine de fin (si besoin)
+    if (nbAvance > 0) {
+        console.log(`➡️ Navigation : avancement sur ${nbAvance} semaine(s)...`);
+        for (let i = 1; i <= nbAvance; i++) {
+            await page.click('.dhx_cal_next_button');
+            await pause(10000);
+            
+            semaineActuelleEnCours++;
+            let affichageSemaine = semaineActuelleEnCours === 0 ? "actuelle" : (semaineActuelleEnCours > 0 ? "+" + semaineActuelleEnCours : semaineActuelleEnCours);
+            console.log(`📥 Téléchargement des données (Semaine ${affichageSemaine})...`);
+            
+            cours = cours.concat(await extraireLesCours());
+        }
     }
 
     if (cours.length > 0) {
@@ -185,6 +215,8 @@ async function autoLog(page, message) {
         const now = new Date();
         const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        const nbSemainesTraitees = 1 + nbAvance;
 
         // Création de l'objet de métadonnées
         const metadata = {
@@ -196,7 +228,7 @@ async function autoLog(page, message) {
         // On ajoute les métadonnées comme dernier élément du tableau
         cours.push(metadata);
 
-        console.log(`✅ SUCCÈS : ${cours.length - 1} cours récupérés sur 4 semaines.`);
+        console.log(`✅ SUCCÈS : ${cours.length - 1} cours récupérés sur ${nbSemainesTraitees} semaine(s).`);
         console.log(`⏱️ Durée globale : ${durationSeconds}s`);
         
         fs.writeFileSync('./data_edt.json', JSON.stringify(cours, null, 2));
