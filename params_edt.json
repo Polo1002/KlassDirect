@@ -6,8 +6,8 @@
   "themeSetting": "auto",
   "customGradient1": null,
   "customGradient2": null,
-  "weeksBefore": 0,
-  "weeksAfter": 1,
+  "weeksBefore": -3,
+  "weeksAfter": 2,
   "courseOpacity": 0.5,
   "defaultView": "week"
 }
