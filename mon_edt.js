@@ -111,7 +111,6 @@ async function autoLog(page, message) {
             const data = [];
 
             elements.forEach(el => {
-                // --- EXTRACTION ET CONVERSION DU JOUR ---
                 // --- EXTRACTION ET CONVERSION DU JOUR AVEC ANNÉE ---
                 const timestamp = el.getAttribute('data-bar-start');
                 let jourExtrait = "";
@@ -120,13 +119,13 @@ async function autoLog(page, message) {
                 if (timestamp) {
                     const d = new Date(parseInt(timestamp));
                     const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-                  const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+                    const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
                     
-                    anneeExtraite = d.getFullYear().toString(); // Récupère l'année (ex: 2026)
+                    anneeExtraite = d.getFullYear().toString(); 
     
-                    // On construit la chaîne du jour incluant l'année pour chaque matière
                     jourExtrait = `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]} ${anneeExtraite}`;
                 }
+                
                 // --- EXTRACTION DES HORAIRES ET DE LA SALLE ---
                 const header = el.querySelector('.edt-cours-header');
                 let debut = "", fin = "", salle = "";
@@ -161,6 +160,7 @@ async function autoLog(page, message) {
 
                 data.push({
                     jour: jourExtrait,
+                    annee: anneeExtraite, // Ajouté ici pour corriger l'oubli
                     debut: debut,
                     fin: fin,
                     matiere: matiere,
@@ -177,40 +177,128 @@ async function autoLog(page, message) {
 
     let cours = [];
 
+    // --- NOUVELLE LOGIQUE : CHARGEMENT ET ANALYSE DES DONNÉES EXISTANTES ---
+    let existingData = [];
+    if (fs.existsSync('./data_edt.json')) {
+        try {
+            existingData = JSON.parse(fs.readFileSync('./data_edt.json', 'utf8'));
+            existingData = existingData.filter(item => !item.identifiant); // On enlève les métadonnées pour le traitement
+        } catch (err) {
+            console.error("⚠️ Impossible de lire les anciennes données.", err);
+        }
+    }
+
+    const AUJOURDHUI = new Date();
+    const getLundi = (d) => {
+        const date = new Date(d);
+        const day = date.getDay(), diff = date.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(date.setDate(diff));
+        monday.setHours(0, 0, 0, 0);
+        return monday;
+    };
+    const LUNDI_S0 = getLundi(AUJOURDHUI);
+
+    function parserDateED(str) {
+        if (!str || typeof str !== 'string') return null;
+        const moisMatch = { 'Jan': 0, 'Fév': 1, 'Mar': 2, 'Avr': 3, 'Mai': 4, 'Juin': 5, 'Juil': 6, 'Aoû': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Déc': 11 };
+        const parts = str.split(' ');
+        if (parts.length < 4) return null;
+        return new Date(parseInt(parts[3]), moisMatch[parts[2]], parseInt(parts[1]));
+    }
+
+    let semainesATraiter = [];
+    for (let i = weeksBefore; i <= weeksAfter; i++) {
+        if (i >= -1 && i <= 1) {
+            semainesATraiter.push(i);
+            continue;
+        }
+        const debutSemaine = new Date(LUNDI_S0);
+        debutSemaine.setDate(debutSemaine.getDate() + (i * 7));
+        const finSemaine = new Date(debutSemaine);
+        finSemaine.setDate(finSemaine.getDate() + 6);
+
+        const existeDeja = existingData.some(c => {
+            const dateCours = parserDateED(c.jour);
+            return dateCours && dateCours >= debutSemaine && dateCours <= finSemaine;
+        });
+
+        if (!existeDeja) { semainesATraiter.push(i); }
+    }
+    semainesATraiter.sort((a, b) => a - b);
+
+    // Calcul des clics optimisés basés sur les semaines à récupérer
+    const minSemaine = semainesATraiter[0];
+    const maxSemaine = semainesATraiter[semainesATraiter.length - 1];
+    
+    // Remplace les anciennes constantes statiques nbRecul et nbAvance
+    const nbRecul = minSemaine < 0 ? Math.abs(minSemaine) : 0;
+    const nbAvance = maxSemaine - minSemaine; 
+
     // --- NAVIGATION ET TÉLÉCHARGEMENT DYNAMIQUE ---
     console.log("⏳ Attente de 10 secondes...");
     await pause(10000);
-
-    const nbRecul = Math.abs(weeksBefore);
-    const nbAvance = nbRecul + weeksAfter;
+    console.log(`🧠 OPTIMISATION : Semaines ciblées : [ ${semainesATraiter.join(', ')} ]`);
 
     // 1. Reculer jusqu'à la première semaine ciblée (si besoin)
     if (nbRecul > 0) {
-        console.log(`⬅️ Navigation : recul de ${nbRecul} semaine(s)...`);
+        console.log(`⬅️ Navigation : recul initial de ${nbRecul} semaine(s)...`);
         for (let i = 0; i < nbRecul; i++) {
             await page.click('.dhx_cal_prev_button');
             await pause(10000);
         }
     }
 
-    // 2. Extraire la première semaine
-    let semaineActuelleEnCours = weeksBefore;
-    console.log(`📥 Téléchargement des données (Semaine ${semaineActuelleEnCours === 0 ? "actuelle" : semaineActuelleEnCours})...`);
-    cours = cours.concat(await extraireLesCours());
+    // 2. Extraire la première semaine (si elle fait partie de la liste)
+    let semaineActuelleEnCours = minSemaine;
+    if (semainesATraiter.includes(semaineActuelleEnCours)) {
+        console.log(`📥 Téléchargement (Semaine ${semaineActuelleEnCours === 0 ? "actuelle" : semaineActuelleEnCours})...`);
+        cours = cours.concat(await extraireLesCours());
+    } else {
+        console.log(`⏭️ Ignoré : Semaine ${semaineActuelleEnCours} (Déjà en cache)`);
+    }
 
     // 3. Avancer progressivement jusqu'à la semaine de fin (si besoin)
     if (nbAvance > 0) {
-        console.log(`➡️ Navigation : avancement sur ${nbAvance} semaine(s)...`);
+        console.log(`➡️ Navigation : avancement pas à pas sur ${nbAvance} semaine(s)...`);
         for (let i = 1; i <= nbAvance; i++) {
             await page.click('.dhx_cal_next_button');
             await pause(10000);
             
             semaineActuelleEnCours++;
             let affichageSemaine = semaineActuelleEnCours === 0 ? "actuelle" : (semaineActuelleEnCours > 0 ? "+" + semaineActuelleEnCours : semaineActuelleEnCours);
-            console.log(`📥 Téléchargement des données (Semaine ${affichageSemaine})...`);
             
-            cours = cours.concat(await extraireLesCours());
+            if (semainesATraiter.includes(semaineActuelleEnCours)) {
+                console.log(`📥 Téléchargement (Semaine ${affichageSemaine})...`);
+                cours = cours.concat(await extraireLesCours());
+            } else {
+                console.log(`⏭️ Ignoré : Semaine ${affichageSemaine} (Déjà en cache)`);
+            }
         }
+    }
+
+    // --- FUSION ET SAUVEGARDE FINALE ---
+    if (existingData.length > 0) {
+        // On conserve les anciennes données SAUF si elles appartiennent aux semaines qu'on vient de re-télécharger
+        let dataToKeep = existingData.filter(coursItem => {
+            const dateCours = parserDateED(coursItem.jour);
+            if (!dateCours) return false;
+            
+            const appartientASemaineMiseAJour = semainesATraiter.some(i => {
+                const debut = new Date(LUNDI_S0);
+                debut.setDate(debut.getDate() + (i * 7));
+                const fin = new Date(debut);
+                fin.setDate(fin.getDate() + 6);
+                return dateCours >= debut && dateCours <= fin;
+            });
+            
+            return !appartientASemaineMiseAJour;
+        });
+        
+        // Concaténation : (anciennes données non obsolètes) + (nouvelles données fraîches)
+        cours = dataToKeep.concat(cours);
+        
+        // Optionnel : trier le tableau final chronologiquement
+        cours.sort((a, b) => parserDateED(a.jour) - parserDateED(b.jour));
     }
 
     if (cours.length > 0) {
@@ -220,8 +308,6 @@ async function autoLog(page, message) {
         const now = new Date();
         const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-        const nbSemainesTraitees = 1 + nbAvance;
 
         // Création de l'objet de métadonnées
         const metadata = {
@@ -233,7 +319,7 @@ async function autoLog(page, message) {
         // On ajoute les métadonnées comme dernier élément du tableau
         cours.push(metadata);
 
-        console.log(`✅ SUCCÈS : ${cours.length - 1} cours récupérés sur ${nbSemainesTraitees} semaine(s).`);
+        console.log(`✅ SUCCÈS : ${cours.length - 1} cours compilés au total.`);
         console.log(`⏱️ Durée globale : ${durationSeconds}s`);
         
         fs.writeFileSync('./data_edt.json', JSON.stringify(cours, null, 2));
