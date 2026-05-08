@@ -112,16 +112,21 @@ async function autoLog(page, message) {
 
             elements.forEach(el => {
                 // --- EXTRACTION ET CONVERSION DU JOUR ---
+                // --- EXTRACTION ET CONVERSION DU JOUR AVEC ANNÉE ---
                 const timestamp = el.getAttribute('data-bar-start');
                 let jourExtrait = "";
+                let anneeExtraite = "";
                 
                 if (timestamp) {
                     const d = new Date(parseInt(timestamp));
                     const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-                    const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-                    jourExtrait = `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]}`;
+                  const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+                    
+                    anneeExtraite = d.getFullYear().toString(); // Récupère l'année (ex: 2026)
+    
+                    // On construit la chaîne du jour incluant l'année pour chaque matière
+                    jourExtrait = `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]} ${anneeExtraite}`;
                 }
-
                 // --- EXTRACTION DES HORAIRES ET DE LA SALLE ---
                 const header = el.querySelector('.edt-cours-header');
                 let debut = "", fin = "", salle = "";
