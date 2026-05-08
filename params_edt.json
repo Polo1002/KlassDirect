@@ -5,7 +5,7 @@
   "useCustomSubjects": true,
   "themeSetting": "auto",
   "customGradient1": null,
-  "customGradient2": null,
+  "customGradient2": "#8400fd",
   "weeksBefore": 0,
   "weeksAfter": 1,
   "courseOpacity": 0.5
