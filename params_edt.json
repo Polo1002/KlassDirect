@@ -10,5 +10,5 @@
   "weeksAfter": 0,
   "courseOpacity": 0.5,
   "defaultView": "week",
-  "showHolidays": false
+  "showHolidays": true
 }
