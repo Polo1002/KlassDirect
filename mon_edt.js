@@ -25,7 +25,9 @@ let weeksAfter = 0;
 if (fs.existsSync('./params_edt.json')) {
     try {
         const params = JSON.parse(fs.readFileSync('./params_edt.json', 'utf8'));
+        // On s'assure que weeksBefore est bien négatif ou nul
         weeksBefore = params.weeksBefore !== undefined ? (params.weeksBefore > 0 ? -params.weeksBefore : params.weeksBefore) : 0;
+        // On s'assure que weeksAfter est bien positif ou nul
         weeksAfter = params.weeksAfter !== undefined ? (params.weeksAfter < 0 ? -params.weeksAfter : params.weeksAfter) : 0;
     } catch (err) {
         console.error("⚠️ Erreur lors de la lecture de params_edt.json, utilisation des valeurs par défaut (0, 0).", err);
@@ -99,19 +101,18 @@ async function autoLog(page, message) {
     console.log("🚀 Navigation vers l'EDT...");
     await page.goto('https://www.ecoledirecte.com/E/10042/EmploiDuTemps', { waitUntil: 'networkidle0' });
     
+    // On attend que les événements de l'EDT apparaissent (max 15 secondes)
     await page.waitForSelector('.dhx_cal_event', { timeout: 15000 }).catch(() => console.log("⏳ Temps écoulé, la page est peut-être vide ou lente."));
     await autoLog(page, "Extraction_Donnees");
 
     const extraireLesCours = async () => {
-        const data = [];
-        // On récupère tous les éléments HTML des cours
-        const elements = await page.$$('.dhx_cal_event');
+        return await page.evaluate(() => {
+            const elements = document.querySelectorAll('.dhx_cal_event');
+            const data = [];
 
-        // On parcourt chaque cours un par un pour permettre l'interaction avec la souris
-        for (const el of elements) {
-            // Extraction classique (tes lignes n'ont pas changé)
-            const donnees = await page.evaluate((element) => {
-                const timestamp = element.getAttribute('data-bar-start');
+            elements.forEach(el => {
+                // --- EXTRACTION ET CONVERSION DU JOUR AVEC ANNÉE ---
+                const timestamp = el.getAttribute('data-bar-start');
                 let jourExtrait = "";
                 let anneeExtraite = "";
                 
@@ -119,11 +120,14 @@ async function autoLog(page, message) {
                     const d = new Date(parseInt(timestamp));
                     const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
                     const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+                    
                     anneeExtraite = d.getFullYear().toString(); 
+    
                     jourExtrait = `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]} ${anneeExtraite}`;
                 }
                 
-                const header = element.querySelector('.edt-cours-header');
+                // --- EXTRACTION DES HORAIRES ET DE LA SALLE ---
+                const header = el.querySelector('.edt-cours-header');
                 let debut = "", fin = "", salle = "";
                 
                 if (header) {
@@ -139,22 +143,24 @@ async function autoLog(page, message) {
                     }
                 }
 
-                const matiere = element.querySelector('.edt-cours-text')?.innerText.trim() || "";
-                const prof = element.querySelector('.edt-prof')?.innerText.trim() || "";
+                const matiere = el.querySelector('.edt-cours-text')?.innerText.trim() || "";
+                const prof = el.querySelector('.edt-prof')?.innerText.trim() || "";
 
-                let couleur = element.style.getPropertyValue('--dhx-scheduler-event-background').trim();
+                // --- EXTRACTION DE LA COULEUR ---
+                let couleur = el.style.getPropertyValue('--dhx-scheduler-event-background').trim();
                 if (!couleur) {
-                    const bg = window.getComputedStyle(element).backgroundColor;
+                    const bg = window.getComputedStyle(el).backgroundColor;
                     const rgb = bg.match(/\d+/g);
                     couleur = rgb ? "#" + rgb.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('') : "#f3f3f3";
                 }
 
-                const annule = element.innerText.includes("ANNULÉ") || element.classList.contains("annule");
-                const modifie = element.querySelector('.fa-triangle-exclamation') !== null || element.querySelector('[title="cours modifié"]') !== null;
+                // --- DÉTECTION DES STATUTS (Annulé / Modifié) ---
+                const annule = el.innerText.includes("ANNULÉ") || el.classList.contains("annule");
+                const modifie = el.querySelector('.fa-triangle-exclamation') !== null || el.querySelector('[title="cours modifié"]') !== null;
 
-                return {
+                data.push({
                     jour: jourExtrait,
-                    annee: anneeExtraite,
+                    annee: anneeExtraite, 
                     debut: debut,
                     fin: fin,
                     matiere: matiere,
@@ -163,64 +169,20 @@ async function autoLog(page, message) {
                     couleur: couleur,
                     annule: annule,
                     modifie: modifie
-                };
-            }, el);
-
-            // --- DÉBUT DE L'AJOUT POUR LES COURS ANNULÉS ---
-            if (donnees && donnees.annule) {
-                try {
-                    // 1. On place la souris sur le cours
-                    await el.hover();
-                    
-                    // 2. On attend l'apparition du tooltip (max 2 secondes)
-                    await page.waitForSelector('.dhtmlXTooltip', { visible: true, timeout: 2000 });
-                    
-                    // 3. On extrait les données du tooltip
-                    const horairesTooltip = await page.evaluate(() => {
-                        const tooltip = document.querySelector('.dhtmlXTooltip');
-                        if (!tooltip) return null;
-                        
-                        const html = tooltip.innerHTML;
-                        const matchDebut = html.match(/<b>D[é|e]but:\s*<\/b>\s*(\d{1,2}:\d{2})/i);
-                        const matchFin = html.match(/<b>Fin:\s*<\/b>\s*(\d{1,2}:\d{2})/i);
-                        
-                        return {
-                            debut: matchDebut ? matchDebut[1] : null,
-                            fin: matchFin ? matchFin[1] : null
-                        };
-                    });
-                    
-                    // 4. On écrase les horaires si on en a trouvé des nouveaux
-                    if (horairesTooltip && horairesTooltip.debut) {
-                        donnees.debut = horairesTooltip.debut;
-                    }
-                    if (horairesTooltip && horairesTooltip.fin) {
-                        donnees.fin = horairesTooltip.fin;
-                    }
-                    
-                    // 5. On enlève la souris pour cacher le tooltip
-                    await page.mouse.move(0, 0);
-                    await new Promise(r => setTimeout(r, 200)); 
-                    
-                } catch (erreurTooltip) {
-                    await page.mouse.move(0, 0); 
-                }
-            }
-            // --- FIN DE L'AJOUT ---
-
-            data.push(donnees);
-        }
-        return data;
+                });
+            });
+            return data;
+        });
     };
 
     let cours = [];
 
-    // --- ANALYSE DU CACHE ---
+    // --- NOUVELLE LOGIQUE : CHARGEMENT ET ANALYSE DES DONNÉES EXISTANTES ---
     let existingData = [];
     if (fs.existsSync('./data_edt.json')) {
         try {
             existingData = JSON.parse(fs.readFileSync('./data_edt.json', 'utf8'));
-            existingData = existingData.filter(item => !item.identifiant); 
+            existingData = existingData.filter(item => !item.identifiant); // On enlève les métadonnées pour le traitement
         } catch (err) {
             console.error("⚠️ Impossible de lire les anciennes données.", err);
         }
@@ -264,16 +226,19 @@ async function autoLog(page, message) {
     }
     semainesATraiter.sort((a, b) => a - b);
 
+    // Calcul des clics optimisés basés sur les semaines à récupérer
     const minSemaine = semainesATraiter[0];
     const maxSemaine = semainesATraiter[semainesATraiter.length - 1];
+    
     const nbRecul = minSemaine < 0 ? Math.abs(minSemaine) : 0;
     const nbAvance = maxSemaine - minSemaine; 
 
-    // --- NAVIGATION ---
+    // --- NAVIGATION ET TÉLÉCHARGEMENT DYNAMIQUE ---
     console.log("⏳ Attente de 10 secondes...");
     await pause(10000);
     console.log(`🧠 OPTIMISATION : Semaines ciblées : [ ${semainesATraiter.join(', ')} ]`);
 
+    // 1. Reculer jusqu'à la première semaine ciblée (si besoin)
     if (nbRecul > 0) {
         console.log(`⬅️ Navigation : recul initial de ${nbRecul} semaine(s)...`);
         for (let i = 0; i < nbRecul; i++) {
@@ -282,36 +247,52 @@ async function autoLog(page, message) {
         }
     }
 
+    // 2. Extraire la première semaine (si elle fait partie de la liste)
     let semaineActuelleEnCours = minSemaine;
     if (semainesATraiter.includes(semaineActuelleEnCours)) {
         console.log(`📥 Téléchargement (Semaine ${semaineActuelleEnCours === 0 ? "actuelle" : semaineActuelleEnCours})...`);
         cours = cours.concat(await extraireLesCours());
+    } else {
+        console.log(`⏭️ Ignoré : Semaine ${semaineActuelleEnCours} (Déjà en cache)`);
     }
 
+    // 3. Avancer progressivement jusqu'à la semaine de fin (si besoin)
     if (nbAvance > 0) {
+        console.log(`➡️ Navigation : avancement pas à pas sur ${nbAvance} semaine(s)...`);
         for (let i = 1; i <= nbAvance; i++) {
             await page.click('.dhx_cal_next_button');
             await pause(10000);
+            
             semaineActuelleEnCours++;
+            let affichageSemaine = semaineActuelleEnCours === 0 ? "actuelle" : (semaineActuelleEnCours > 0 ? "+" + semaineActuelleEnCours : semaineActuelleEnCours);
+            
             if (semainesATraiter.includes(semaineActuelleEnCours)) {
-                console.log(`📥 Téléchargement (Semaine ${semaineActuelleEnCours === 0 ? "actuelle" : (semaineActuelleEnCours > 0 ? "+" + semaineActuelleEnCours : semaineActuelleEnCours)})...`);
+                console.log(`📥 Téléchargement (Semaine ${affichageSemaine})...`);
                 cours = cours.concat(await extraireLesCours());
+            } else {
+                console.log(`⏭️ Ignoré : Semaine ${affichageSemaine} (Déjà en cache)`);
             }
         }
     }
 
+// ... (Tout le début du code reste strictement identique jusqu'à la partie FUSION)
+
     // --- FUSION ET SAUVEGARDE FINALE ---
     if (existingData.length > 0) {
+        // 1. On identifie les jours exacts que l'on vient de télécharger (ex: "Lun 13 Avr 2026")
         const joursVientDeTelecharger = [...new Set(cours.map(c => c.jour))];
         
         console.log(`🔄 Fusion : Mise à jour de ${joursVientDeTelecharger.length} jours dans le cache...`);
 
+        // 2. On filtre existingData : on ne garde que les cours dont le jour n'est PAS dans la liste qu'on vient de télécharger
         let dataToKeep = existingData.filter(coursAncien => {
             return !joursVientDeTelecharger.includes(coursAncien.jour);
         });
         
+        // 3. On combine : (Les anciens cours des jours non touchés) + (Tous les nouveaux cours téléchargés)
         cours = dataToKeep.concat(cours);
         
+        // 4. Tri chronologique pour que le fichier reste lisible
         cours.sort((a, b) => {
             const dateA = parserDateED(a.jour);
             const dateB = parserDateED(b.jour);
@@ -321,6 +302,7 @@ async function autoLog(page, message) {
     }
 
     if (cours.length > 0) {
+        // --- CALCUL DES MÉTADONNÉES ---
         const endTime = Date.now();
         const durationSeconds = ((endTime - startTime) / 1000).toFixed(2);
         const now = new Date();
@@ -337,7 +319,7 @@ async function autoLog(page, message) {
 
         console.log(`✅ SUCCÈS : ${cours.length - 1} cours compilés au total.`);
         fs.writeFileSync('./data_edt.json', JSON.stringify(cours, null, 2));
-    } else {
+} else {
         console.log("❌ ÉCHEC : Aucun cours trouvé.");
     }
 
