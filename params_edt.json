@@ -1,6 +1,6 @@
 {
   "notificationsEnabled": false,
-  "useCustomColors": true,
+  "useCustomColors": false,
   "useCustomProfs": true,
   "useCustomSubjects": true,
   "themeSetting": "auto",
