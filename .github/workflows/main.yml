@@ -24,20 +24,25 @@ jobs:
           node-version: '24'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install axios puppeteer
 
-      - name: Run Robot
+      - name: Run Robot Extraction
         env:
           ED_IDENTIFIANT: ${{ secrets.ED_IDENTIFIANT }}
           MOT_DE_PASSE: ${{ secrets.MOT_DE_PASSE }}
           ED_REPONSES: ${{ secrets.ED_REPONSES }}
         run: node mon_edt.js
 
+      - name: Run Notifications Scheduler
+        env:
+          ONESIGNAL_API_KEY: ${{ secrets.ONESIGNAL_API_KEY }}
+        run: node notifier.js
+
       - name: Sauvegarder data_edt.json sur GitHub
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add data_edt.json
-          git commit -m "Mise à jour automatique de l'EDT [skip ci]" || echo "Aucun changement à enregistrer"
+          git commit -m "Mise à jour EDT et Notifications [skip ci]" || echo "Aucun changement"
           git pull --rebase --autostash origin main
           git push origin main
