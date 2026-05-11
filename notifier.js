@@ -4,24 +4,34 @@ const fs = require('fs');
 const ONESIGNAL_APP_ID = "7f3b7dde-ef82-4414-b091-1c0a957b188f";
 const ONESIGNAL_KEY = process.env.ONESIGNAL_API_KEY;
 
-// Fonction pour transformer "Lun 11 Mai 2026" + "08:30" en objet Date
-function parserDateComplete(jourStr, heureStr) {
+function parserDateComplete(jourStr, heureStr, annee) {
+    // Map étendue pour correspondre exactement à ton JSON (Aoû, Juil, etc.)
     const moisMatch = { 
-        'Jan': 0, 'Fév': 1, 'Mar': 2, 'Avr': 3, 'Mai': 4, 'Juin': 5, 
-        'Juil': 6, 'Aoû': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Déc': 11 
+        'Jan': 0, 'Janv': 0, 'Fév': 1, 'Mar': 2, 'Avr': 3, 'Mai': 4, 'Juin': 5, 
+        'Jui': 6, 'Juil': 6, 'Aoû': 7, 'Sep': 8, 'Sept': 8, 'Oct': 9, 'Nov': 10, 'Déc': 11 
     };
-    const parts = jourStr.split(' '); // ["Lun", "11", "Mai", "2026"]
-    const heureParts = heureStr.split(':'); // ["08", "30"]
 
-    if (parts.length < 4 || heureParts.length < 2) return null;
+    const parts = jourStr.split(' '); 
+    // Format attendu : ["Jour", "Num", "Mois", "Année"]
+    // Note : Ton JSON a déjà l'année dans le champ "jour" ET dans un champ "annee"
+    
+    if (parts.length < 3) return null;
 
-    return new Date(
-        parseInt(parts[3]), 
-        moisMatch[parts[2]], 
-        parseInt(parts[1]), 
-        parseInt(heureParts[0]), 
-        parseInt(heureParts[1])
-    );
+    const jourNum = parseInt(parts[1]);
+    const moisIndex = moisMatch[parts[2]];
+    const anneeNum = parseInt(parts[3]) || parseInt(annee);
+
+    // GESTION DU CAS SANS HEURE :
+    // Si l'heure est vide ou invalide, on met 08:00 par défaut
+    let h = 8, m = 0;
+    if (heureStr && heureStr.includes(':')) {
+        const hParts = heureStr.split(':');
+        h = parseInt(hParts[0]);
+        m = parseInt(hParts[1]);
+    }
+
+    const d = new Date(anneeNum, moisIndex, jourNum, h, m);
+    return isNaN(d.getTime()) ? null : d;
 }
 
 async function scheduleNotification(message, sendAt, courseId) {
@@ -30,8 +40,9 @@ async function scheduleNotification(message, sendAt, courseId) {
             app_id: ONESIGNAL_APP_ID,
             contents: { fr: message },
             send_after: sendAt.toISOString(),
-            // On cible tout le monde (ton téléphone abonné)
-            included_segments: ["Total Subscriptions"]
+            included_segments: ["Total Subscriptions"],
+            // ID unique pour éviter les doublons si le script tourne plusieurs fois
+            external_id: courseId 
         }, {
             headers: { 
                 'Authorization': `Basic ${ONESIGNAL_KEY}`,
@@ -40,7 +51,10 @@ async function scheduleNotification(message, sendAt, courseId) {
         });
         console.log(`✅ Programmée : "${message}" pour le ${sendAt.toLocaleString()}`);
     } catch (e) {
-        console.error("❌ Erreur OneSignal:", e.response?.data || e.message);
+        // On ignore l'erreur 409 (notification déjà existante avec cet ID)
+        if (e.response?.status !== 409) {
+            console.error("❌ Erreur OneSignal:", e.response?.data || e.message);
+        }
     }
 }
 
@@ -48,36 +62,34 @@ async function scheduleNotification(message, sendAt, courseId) {
     if (!fs.existsSync('./data_edt.json')) return;
 
     const allData = JSON.parse(fs.readFileSync('./data_edt.json', 'utf8'));
-    // On retire l'objet de métadonnées (le dernier du tableau)
-    const coursData = allData.filter(item => !item.derniere_mise_a_jour);
+    // On ignore les métadonnées et les congés
+    const coursData = allData.filter(item => item.matiere && item.matiere !== "CONGÉS");
     
-    // Pour éviter les doublons, on garde trace de ce qu'on a déjà traité dans cette session
-    // (Note : Pour un vrai historique, il faudrait un fichier notified.json, mais commençons simple)
     const maintenant = new Date();
 
     for (const cours of coursData) {
         if (!cours.annule && !cours.modifie) continue;
 
-        const dateCours = parserDateComplete(cours.jour, cours.debut);
+        const dateCours = parserDateComplete(cours.jour, cours.debut, cours.annee);
         if (!dateCours) continue;
 
         let sendAt;
         let texte = "";
 
         if (cours.annule) {
-            // Pile 24h avant le cours
+            // Un jour avant
             sendAt = new Date(dateCours.getTime() - (24 * 60 * 60 * 1000));
-            texte = `❌ Cours ANNULÉ : ${cours.matiere} demain à ${cours.debut}`;
+            texte = `❌ COURS ANNULÉ : ${cours.matiere} (${cours.jour})`;
         } else if (cours.modifie) {
-            // Pile 25h avant le cours (1 jour et 1 heure)
+            // Un jour et une heure avant
             sendAt = new Date(dateCours.getTime() - (25 * 60 * 60 * 1000));
-            texte = `⚠️ Cours MODIFIÉ : ${cours.matiere} demain à ${cours.debut}`;
+            texte = `⚠️ COURS MODIFIÉ : ${cours.matiere} commence demain à ${cours.debut || '?'}`;
         }
 
-        // On ne programme que si le moment de l'envoi est dans le futur 
-        // ET si le cours n'est pas déjà passé
-        if (sendAt > maintenant && dateCours > maintenant) {
-            await scheduleNotification(texte, sendAt, `${cours.matiere}-${cours.jour}`);
+        if (sendAt && sendAt > maintenant && dateCours > maintenant) {
+            // ID unique basé sur la matière, le jour et le statut pour éviter les renvois inutiles
+            const uniqueId = `notif-${cours.annule ? 'ann' : 'mod'}-${cours.matiere}-${cours.jour}`.replace(/\s+/g, '-');
+            await scheduleNotification(texte, sendAt, uniqueId);
         }
     }
 })();
