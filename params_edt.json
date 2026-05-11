@@ -1,8 +1,8 @@
 {
   "notificationsEnabled": false,
-  "useCustomColors": false,
-  "useCustomProfs": false,
-  "useCustomSubjects": false,
+  "useCustomColors": true,
+  "useCustomProfs": true,
+  "useCustomSubjects": true,
   "themeSetting": "auto",
   "customGradient1": null,
   "customGradient2": null,
