@@ -18,10 +18,6 @@ if (fs.existsSync('./config.js')) {
         process.env.ED_REPONSES.split(',').map(s => s.replace(/["']/g, "").trim()) : [];
 }
 
-// On applique le minimum garanti de -1, 0 et 1 après la lecture des paramètres
-weeksBefore = Math.min(weeksBefore, -1);
-weeksAfter = Math.max(weeksAfter, 1);
-
 // --- LECTURE DES PARAMÈTRES EDT ---
 let weeksBefore = 0;
 let weeksAfter = 0;
@@ -37,6 +33,10 @@ if (fs.existsSync('./params_edt.json')) {
         console.error("⚠️ Erreur lors de la lecture de params_edt.json, utilisation des valeurs par défaut (0, 0).", err);
     }
 }
+
+// On applique le minimum garanti de -1, 0 et 1 après la lecture des paramètres
+weeksBefore = Math.min(weeksBefore, -1);
+weeksAfter = Math.max(weeksAfter, 1);
 
 const DIR = './logs';
 if (!fs.existsSync(DIR)) { fs.mkdirSync(DIR, { recursive: true }); }
