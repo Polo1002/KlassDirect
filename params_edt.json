@@ -9,7 +9,7 @@
   "weeksBefore": -3,
   "weeksAfter": 0,
   "courseOpacity": 0.5,
-  "defaultView": "list",
+  "defaultView": "week",
   "listMode": "week",
   "showHolidays": true,
   "holidayColor": "#f59e0b"
