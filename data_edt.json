@@ -10417,6 +10417,7 @@
   },
   {
     "jour": "Lun 18 Mai 2026",
+    "annee": "2026",
     "debut": "08:30",
     "fin": "09:25",
     "matiere": "SC. ECONO.& SOCIALES",
@@ -10428,17 +10429,19 @@
   },
   {
     "jour": "Lun 18 Mai 2026",
-    "debut": "09:25",
-    "fin": "10:20",
+    "annee": "2026",
+    "debut": "",
+    "fin": "",
     "matiere": "ESPAGNOL LV2",
-    "salle": "C203",
+    "salle": "",
     "prof": "BASTARDO I.",
-    "couleur": "#ff99cc",
-    "annule": false,
-    "modifie": false
+    "couleur": "#f3f3f3",
+    "annule": true,
+    "modifie": true
   },
   {
     "jour": "Lun 18 Mai 2026",
+    "annee": "2026",
     "debut": "10:35",
     "fin": "11:30",
     "matiere": "ENS. MORAL & CIVIQUE",
@@ -10450,6 +10453,7 @@
   },
   {
     "jour": "Lun 18 Mai 2026",
+    "annee": "2026",
     "debut": "12:25",
     "fin": "13:45",
     "matiere": "SCIENCES VIE & TERRE",
@@ -10461,6 +10465,7 @@
   },
   {
     "jour": "Lun 18 Mai 2026",
+    "annee": "2026",
     "debut": "14:05",
     "fin": "15:25",
     "matiere": "PHYSIQUE-CHIMIE",
@@ -10472,6 +10477,7 @@
   },
   {
     "jour": "Lun 18 Mai 2026",
+    "annee": "2026",
     "debut": "15:55",
     "fin": "17:15",
     "matiere": "EPS OPTION",
@@ -10483,6 +10489,7 @@
   },
   {
     "jour": "Mar 19 Mai 2026",
+    "annee": "2026",
     "debut": "08:30",
     "fin": "09:25",
     "matiere": "HISTOIRE-GEOGRAPHIE",
@@ -10494,6 +10501,7 @@
   },
   {
     "jour": "Mar 19 Mai 2026",
+    "annee": "2026",
     "debut": "09:25",
     "fin": "10:20",
     "matiere": "MATHEMATIQUES",
@@ -10505,6 +10513,7 @@
   },
   {
     "jour": "Mar 19 Mai 2026",
+    "annee": "2026",
     "debut": "11:30",
     "fin": "12:25",
     "matiere": "MANAGEMENT & GESTION",
@@ -10516,6 +10525,7 @@
   },
   {
     "jour": "Mar 19 Mai 2026",
+    "annee": "2026",
     "debut": "13:20",
     "fin": "14:15",
     "matiere": "HISTOIRE-GEOGRAPHIE",
@@ -10527,6 +10537,7 @@
   },
   {
     "jour": "Mar 19 Mai 2026",
+    "annee": "2026",
     "debut": "14:15",
     "fin": "15:10",
     "matiere": "HISTOIRE-GEOGRAPHIE",
@@ -10538,6 +10549,19 @@
   },
   {
     "jour": "Mar 19 Mai 2026",
+    "annee": "2026",
+    "debut": "14:15",
+    "fin": "17:15",
+    "matiere": "MANAGEMENT & GESTION",
+    "salle": "ROSERAIE",
+    "prof": "HASSEN S.",
+    "couleur": "#3366ff",
+    "annule": false,
+    "modifie": true
+  },
+  {
+    "jour": "Mar 19 Mai 2026",
+    "annee": "2026",
     "debut": "15:25",
     "fin": "16:20",
     "matiere": "MATHEMATIQUES",
@@ -10549,6 +10573,7 @@
   },
   {
     "jour": "Mar 19 Mai 2026",
+    "annee": "2026",
     "debut": "16:20",
     "fin": "17:15",
     "matiere": "SC. ECONO.& SOCIALES",
@@ -10560,6 +10585,7 @@
   },
   {
     "jour": "Mar 19 Mai 2026",
+    "annee": "2026",
     "debut": "17:15",
     "fin": "18:35",
     "matiere": "EPS OPTION",
@@ -10571,6 +10597,7 @@
   },
   {
     "jour": "Mer 20 Mai 2026",
+    "annee": "2026",
     "debut": "08:30",
     "fin": "09:25",
     "matiere": "ESPAGNOL LV2",
@@ -10582,6 +10609,7 @@
   },
   {
     "jour": "Mer 20 Mai 2026",
+    "annee": "2026",
     "debut": "09:25",
     "fin": "10:20",
     "matiere": "PASTORALE",
@@ -10593,6 +10621,7 @@
   },
   {
     "jour": "Mer 20 Mai 2026",
+    "annee": "2026",
     "debut": "10:35",
     "fin": "12:25",
     "matiere": "ED.PHYSIQUE & SPORT.",
@@ -10600,10 +10629,11 @@
     "prof": "GROS E.",
     "couleur": "#ffff66",
     "annule": false,
-    "modifie": false
+    "modifie": true
   },
   {
     "jour": "Mer 20 Mai 2026",
+    "annee": "2026",
     "debut": "13:20",
     "fin": "15:10",
     "matiere": "FRANCAIS",
@@ -10615,6 +10645,7 @@
   },
   {
     "jour": "Jeu 21 Mai 2026",
+    "annee": "2026",
     "debut": "08:30",
     "fin": "09:25",
     "matiere": "PHYSIQUE-CHIMIE",
@@ -10626,6 +10657,7 @@
   },
   {
     "jour": "Jeu 21 Mai 2026",
+    "annee": "2026",
     "debut": "09:25",
     "fin": "10:20",
     "matiere": "MATHEMATIQUES",
@@ -10637,6 +10669,7 @@
   },
   {
     "jour": "Jeu 21 Mai 2026",
+    "annee": "2026",
     "debut": "11:05",
     "fin": "12:25",
     "matiere": "SC.NUMERIQ.TECHNOL.",
@@ -10648,6 +10681,7 @@
   },
   {
     "jour": "Jeu 21 Mai 2026",
+    "annee": "2026",
     "debut": "13:20",
     "fin": "14:15",
     "matiere": "ANGLAIS LV1",
@@ -10659,6 +10693,7 @@
   },
   {
     "jour": "Jeu 21 Mai 2026",
+    "annee": "2026",
     "debut": "15:25",
     "fin": "16:20",
     "matiere": "MATHEMATIQUES",
@@ -10670,6 +10705,7 @@
   },
   {
     "jour": "Ven 22 Mai 2026",
+    "annee": "2026",
     "debut": "08:30",
     "fin": "09:25",
     "matiere": "ACCOMPAGNEMT. PERSO.",
@@ -10681,6 +10717,7 @@
   },
   {
     "jour": "Ven 22 Mai 2026",
+    "annee": "2026",
     "debut": "09:25",
     "fin": "10:20",
     "matiere": "ANGLAIS LV1",
@@ -10692,6 +10729,7 @@
   },
   {
     "jour": "Ven 22 Mai 2026",
+    "annee": "2026",
     "debut": "10:35",
     "fin": "11:30",
     "matiere": "ANGLAIS LV1",
@@ -10703,6 +10741,7 @@
   },
   {
     "jour": "Ven 22 Mai 2026",
+    "annee": "2026",
     "debut": "11:30",
     "fin": "12:25",
     "matiere": "PHYSIQUE-CHIMIE",
@@ -10714,6 +10753,7 @@
   },
   {
     "jour": "Ven 22 Mai 2026",
+    "annee": "2026",
     "debut": "13:20",
     "fin": "14:15",
     "matiere": "FRANCAIS",
@@ -10725,6 +10765,7 @@
   },
   {
     "jour": "Ven 22 Mai 2026",
+    "annee": "2026",
     "debut": "15:25",
     "fin": "16:20",
     "matiere": "FRANCAIS",
@@ -10752,11 +10793,11 @@
     "debut": "08:30",
     "fin": "09:25",
     "matiere": "HISTOIRE-GEOGRAPHIE",
-    "salle": "C203",
+    "salle": "C3 RESEAU 7, C3 RESEAU 1",
     "prof": "PRAQUIN V.",
     "couleur": "#66ccff",
     "annule": false,
-    "modifie": false
+    "modifie": true
   },
   {
     "jour": "Mar 26 Mai 2026",
@@ -10788,11 +10829,11 @@
     "debut": "13:20",
     "fin": "14:15",
     "matiere": "HISTOIRE-GEOGRAPHIE",
-    "salle": "C203",
+    "salle": "C3 RESEAU 5",
     "prof": "PRAQUIN V.",
     "couleur": "#66ccff",
     "annule": false,
-    "modifie": false
+    "modifie": true
   },
   {
     "jour": "Mar 26 Mai 2026",
@@ -10800,11 +10841,11 @@
     "debut": "14:15",
     "fin": "15:10",
     "matiere": "HISTOIRE-GEOGRAPHIE",
-    "salle": "C203",
+    "salle": "C3 RESEAU 7, C3 RESEAU 1",
     "prof": "PRAQUIN V.",
     "couleur": "#66ccff",
     "annule": false,
-    "modifie": false
+    "modifie": true
   },
   {
     "jour": "Mar 26 Mai 2026",
@@ -10937,6 +10978,18 @@
     "couleur": "#ff99cc",
     "annule": false,
     "modifie": false
+  },
+  {
+    "jour": "Ven 29 Mai 2026",
+    "annee": "2026",
+    "debut": "08:30",
+    "fin": "17:15",
+    "matiere": "SORT",
+    "salle": "",
+    "prof": "MORI J.",
+    "couleur": "#91b2bc",
+    "annule": false,
+    "modifie": true
   },
   {
     "jour": "Ven 29 Mai 2026",
@@ -11900,7 +11953,7 @@
   },
   {
     "identifiant": "Paul135",
-    "derniere_mise_a_jour": "13/05/2026 à 20:30:53",
-    "duree_extraction": "67.76 secondes"
+    "derniere_mise_a_jour": "18/05/2026 à 19:58:09",
+    "duree_extraction": "80.34 secondes"
   }
 ]
