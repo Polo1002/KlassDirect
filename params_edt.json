@@ -11,6 +11,6 @@
   "courseOpacity": 0.5,
   "defaultView": "week",
   "listMode": "month",
-  "showHolidays": false,
+  "showHolidays": true,
   "holidayColor": "#f59e0b"
 }
