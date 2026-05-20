@@ -1,0 +1,28 @@
+name: Notification OneSignal Seule
+
+on:
+  # Permet de déclencher manuellement le workflow depuis l'onglet "Actions"
+  workflow_dispatch:
+  # Tu peux ajouter un schedule si tu veux qu'il se lance automatiquement à des heures précises
+  # schedule:
+  #   - cron: '0 8 * * *' 
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm install axios
+
+      - name: Run Notifications Scheduler
+        env:
+          ONESIGNAL_API_KEY: ${{ secrets.ONESIGNAL_API_KEY }}
+        run: node notifier.js
