@@ -1,8 +1,23 @@
 const axios = require('axios');
 const fs = require('fs');
+const crypto = require('crypto'); // 🛠️ Importation du module natif pour la génération d'UUID
 
 const ONESIGNAL_APP_ID = "7f3b7dde-ef82-4414-b091-1c0a957b188f";
 const ONESIGNAL_KEY = process.env.ONESIGNAL_API_KEY;
+
+/**
+ * Convertit une chaîne textuelle unique en un format UUID v4 déterministe et valide pour OneSignal.
+ */
+function stringToUUID(str) {
+    const hash = crypto.createHash('sha256').update(str).digest('hex');
+    return [
+        hash.substring(0, 8),
+        hash.substring(8, 12),
+        '4' + hash.substring(13, 16), // Version 4 spec
+        'a' + hash.substring(17, 20), // Variant spec
+        hash.substring(20, 32)
+    ].join('-');
+}
 
 function parserDateComplete(jourStr, heureStr, annee) {
     // Map étendue pour correspondre exactement à ton JSON (Aoû, Juil, etc.)
@@ -13,7 +28,6 @@ function parserDateComplete(jourStr, heureStr, annee) {
 
     const parts = jourStr.split(' '); 
     // Format attendu : ["Jour", "Num", "Mois", "Année"]
-    // Note : Ton JSON a déjà l'année dans le champ "jour" ET dans un champ "annee"
     
     if (parts.length < 3) return null;
 
@@ -41,7 +55,7 @@ async function scheduleNotification(message, sendAt, courseId) {
             contents: { fr: message },
             send_after: sendAt.toISOString(),
             included_segments: ["Total Subscriptions"],
-            // ID unique pour éviter les doublons si le script tourne plusieurs fois
+            // ID unique au format UUID valide pour éviter les doublons
             external_id: courseId 
         }, {
             headers: { 
@@ -49,9 +63,9 @@ async function scheduleNotification(message, sendAt, courseId) {
                 'Content-Type': 'application/json'
             }
         });
-        console.log(`✅ Programmée : "${message}" pour le ${sendAt.toLocaleString()}`);
+        console.log(`✅ Programmée : "${message}" pour le ${sendAt.toLocaleString('fr-FR')}`);
     } catch (e) {
-        // On ignore l'erreur 409 (notification déjà existante avec cet ID)
+        // On ignore sereinement l'erreur 409 (notification déjà existante avec cet ID UUID)
         if (e.response?.status !== 409) {
             console.error("❌ Erreur OneSignal:", e.response?.data || e.message);
         }
@@ -73,23 +87,49 @@ async function scheduleNotification(message, sendAt, courseId) {
         const dateCours = parserDateComplete(cours.jour, cours.debut, cours.annee);
         if (!dateCours) continue;
 
-        let sendAt;
-        let texte = "";
+        // Tableau contenant les configurations de notifications à planifier pour ce cours
+        const notificationsAProgrammer = [];
 
+        // CAS : Cours annulé (Notification 1 jour avant)
         if (cours.annule) {
-            // Un jour avant
-            sendAt = new Date(dateCours.getTime() - (24 * 60 * 60 * 1000));
-            texte = `❌ COURS ANNULÉ : ${cours.matiere} (${cours.jour})`;
-        } else if (cours.modifie) {
-            // Un jour et une heure avant
-            sendAt = new Date(dateCours.getTime() - (25 * 60 * 60 * 1000));
-            texte = `⚠️ COURS MODIFIÉ : ${cours.matiere} commence demain à ${cours.debut || '?'}`;
+            const sendAtAnnule = new Date(dateCours.getTime() - (24 * 60 * 60 * 1000));
+            notificationsAProgrammer.push({
+                type: 'annule-1j',
+                sendAt: sendAtAnnule,
+                texte: `❌ COURS ANNULÉ : ${cours.matiere} (${cours.jour})`
+            });
+        }
+        
+        // CAS : Cours modifié (Notification 1 jour avant ET 1 heure avant)
+        if (cours.modifie) {
+            // 1. Rappel un jour avant
+            const sendAtModifie1j = new Date(dateCours.getTime() - (24 * 60 * 60 * 1000));
+            notificationsAProgrammer.push({
+                type: 'modifie-1j',
+                sendAt: sendAtModifie1j,
+                texte: `⚠️ COURS MODIFIÉ : ${cours.matiere} commence demain à ${cours.debut || '?'}`
+            });
+
+            // 2. Rappel une heure avant
+            const sendAtModifie1h = new Date(dateCours.getTime() - (1 * 60 * 60 * 1000));
+            notificationsAProgrammer.push({
+                type: 'modifie-1h',
+                sendAt: sendAtModifie1h,
+                texte: `⚠️ COURS MODIFIÉ : ${cours.matiere} commence bientôt à ${cours.debut || '?'}`
+            });
         }
 
-        if (sendAt && sendAt > maintenant && dateCours > maintenant) {
-            // ID unique basé sur la matière, le jour et le statut pour éviter les renvois inutiles
-            const uniqueId = `notif-${cours.annule ? 'ann' : 'mod'}-${cours.matiere}-${cours.jour}`.replace(/\s+/g, '-');
-            await scheduleNotification(texte, sendAt, uniqueId);
+        // Boucle d'envoi et validation des notifications valides
+        for (const notif of notificationsAProgrammer) {
+            // On vérifie que la date d'envoi programmée et le cours lui-même sont bien dans le futur
+            if (notif.sendAt > maintenant && dateCours > maintenant) {
+                // Construction de la chaîne d'identification textuelle unique
+                const rawId = `notif-${notif.type}-${cours.matiere}-${cours.jour}-${cours.debut}`.replace(/\s+/g, '-');
+                // Encodage strict en UUID v4 exigé par l'API OneSignal
+                const uniqueId = stringToUUID(rawId);
+                
+                await scheduleNotification(notif.texte, notif.sendAt, uniqueId);
+            }
         }
     }
 })();
