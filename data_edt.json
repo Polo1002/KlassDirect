@@ -10923,13 +10923,13 @@
     "jour": "Mer 27 Mai 2026",
     "annee": "2026",
     "debut": "13:20",
-    "fin": "15:10",
+    "fin": "14:00",
     "matiere": "FRANCAIS",
     "salle": "C203",
     "prof": "KAUFF H.",
     "couleur": "#1186fe",
     "annule": false,
-    "modifie": false
+    "modifie": true
   },
   {
     "jour": "Jeu 28 Mai 2026",
@@ -10986,7 +10986,7 @@
     "fin": "17:15",
     "matiere": "SORT",
     "salle": "",
-    "prof": "MORI J.",
+    "prof": "MORI J., HOCHARD Y., BONNAUD DELAMARE A.",
     "couleur": "#91b2bc",
     "annule": false,
     "modifie": true
@@ -11953,7 +11953,7 @@
   },
   {
     "identifiant": "Paul135",
-    "derniere_mise_a_jour": "18/05/2026 à 20:24:12",
-    "duree_extraction": "80.70 secondes"
+    "derniere_mise_a_jour": "20/05/2026 à 21:00:02",
+    "duree_extraction": "80.59 secondes"
   }
 ]
